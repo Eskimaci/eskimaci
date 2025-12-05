@@ -1,0 +1,9 @@
+numpy
+matplotlib
+opencv-python
+shapely
+rasterio
+sentinelhub
+geojson
+ipykernel
+python-decouple
