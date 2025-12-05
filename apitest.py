@@ -11,6 +11,7 @@ from sentinelhub import (
     MosaickingOrder,
     Geometry
 )
+import os
 
 # --- 1. CONFIGURATION ---
 
@@ -91,7 +92,7 @@ AOI_GEOMETRY = Geometry(
 TIME_INTERVAL = ('2023-08-01', '2023-08-30')
 
 # Output resolution and format
-# 512x512 pixels for the requested bounding box
+# 1000x1000 pixels for the requested bounding box
 OUTPUT_SIZE = [1000, 1000] 
 OUTPUT_FORMAT = MimeType.TIFF 
 
@@ -205,11 +206,11 @@ requestLCI = SentinelHubRequest(
 
 # --- 5. EXECUTE AND VISUALIZE ---
 
-print("Executing Sentinel Hub request...")
-
 def createNDVItiff(ndvi_array):         
         # Save as a visual RGB TIFF for image viewers
         from PIL import Image
+        import rasterio
+        from rasterio.transform import from_bounds
         
         # Normalize NDVI from [-1, 1] to [0, 255] for RGB visualization
         # Apply colormap: red for low values, yellow for medium, green for high
@@ -228,9 +229,38 @@ def createNDVItiff(ndvi_array):
         img.save(output_filename)
         print(f"Visual TIFF saved to: {output_filename}")
         
-        # Also save the georeferenced version for GIS use
-        requestNDVI.save_data(redownload=True)
-        print(f"Georeferenced GeoTIFF saved to: ./e7b26b530a0ec6c28408f96c265692f5/response.tiff")
+        # Save georeferenced GeoTIFF in the output folder
+        if not os.path.exists("static/output"):
+            os.makedirs("static/output")
+
+        output_folder = "static/output"
+        
+        geotiff_filename = os.path.join(output_folder, "ndvi_trnava_aug_2023.tif")
+        
+        # Get bounds from geometry
+        coords = polygon_coordinates
+        lons = [c[0] for c in coords]
+        lats = [c[1] for c in coords]
+        bounds = (min(lons), min(lats), max(lons), max(lats))
+        
+        # Create transform
+        transform = from_bounds(*bounds, ndvi_array.shape[1], ndvi_array.shape[0])
+        
+        # Save georeferenced TIFF
+        with rasterio.open(
+            geotiff_filename,
+            'w',
+            driver='GTiff',
+            height=ndvi_array.shape[0],
+            width=ndvi_array.shape[1],
+            count=1,
+            dtype=ndvi_array.dtype,
+            crs='EPSG:4326',
+            transform=transform,
+        ) as dst:
+            dst.write(ndvi_array, 1)
+        
+        print(f"Georeferenced GeoTIFF saved to: {geotiff_filename}")
 
 def createLCItiff(lci_array):
     from PIL import Image
@@ -240,6 +270,9 @@ def createLCItiff(lci_array):
         
     # 1. Define a Visualization Range for LCI
     # LCI values often range from 0 (low/bare) up to around 1.5 - 2.5 for dense, healthy canopy.
+    #
+    # LCI rozsah treba odhadnut lepsie, zatial najlepsie co som nasiel je:
+    #
     LCI_MIN = 0.0  # Assumed minimum (bare soil/water)
     LCI_MAX = 1.0  # Assumed maximum for visualization (high chlorophyll)
     
@@ -271,13 +304,44 @@ def createLCItiff(lci_array):
     img.save(output_filename)
     print(f"Visual TIFF saved to: {output_filename}")
     
-    # Also save the georeferenced version for GIS use (assuming 'requestLCI' is your request object)
-    # You would change 'requestNDVI' to the actual name of your LCI request object.
-    # This part requires you to have the original request object available.
-    requestLCI.save_data(redownload=True)
-    print(f"Georeferenced GeoTIFF saved for GIS use from request object.") 
+    # Save georeferenced GeoTIFF in the output folder
+    import rasterio
+    from rasterio.transform import from_bounds
+    
+    if not os.path.exists("static/output"):
+        os.makedirs("static/output")
+    output_folder = "static/output"
+    os.makedirs(output_folder, exist_ok=True)
+    
+    geotiff_filename = os.path.join(output_folder, "lci_trnava_aug_2023.tif")
+    
+    # Get bounds from geometry
+    coords = polygon_coordinates
+    lons = [c[0] for c in coords]
+    lats = [c[1] for c in coords]
+    bounds = (min(lons), min(lats), max(lons), max(lats))
+    
+    # Create transform
+    transform = from_bounds(*bounds, lci_array.shape[1], lci_array.shape[0])
+    
+    # Save georeferenced TIFF
+    with rasterio.open(
+        geotiff_filename,
+        'w',
+        driver='GTiff',
+        height=lci_array.shape[0],
+        width=lci_array.shape[1],
+        count=1,
+        dtype=lci_array.dtype,
+        crs='EPSG:4326',
+        transform=transform,
+    ) as dst:
+        dst.write(lci_array, 1)
+    
+    print(f"Georeferenced GeoTIFF saved to: {geotiff_filename}") 
 
 if __name__ == "__main__":
+    print("Executing Sentinel Hub request...")
     try:
         print(f"\n✅ Request successful!")
         dataNDVI = requestNDVI.get_data()
