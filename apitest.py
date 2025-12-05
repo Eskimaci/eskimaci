@@ -6,7 +6,6 @@ from sentinelhub import (
     DataCollection, 
     MimeType, 
     CRS, 
-    BBox, 
     SHConfig,
     MosaickingOrder,
     Geometry
