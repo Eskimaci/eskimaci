@@ -94,7 +94,7 @@ TIME_INTERVAL = ('2023-08-01', '2023-08-30')
 
 # Output resolution and format
 # 512x512 pixels for the requested bounding box
-OUTPUT_SIZE = [512, 512] 
+OUTPUT_SIZE = [1000, 1000] 
 OUTPUT_FORMAT = MimeType.TIFF 
 
 # --- 3. THE EVALSCRIPT (JavaScript logic) ---
@@ -146,36 +146,55 @@ request = SentinelHubRequest(
     ],
     geometry = AOI_GEOMETRY,
     size=OUTPUT_SIZE,
+    data_folder='.',
     config=config
 )
 
 # --- 5. EXECUTE AND VISUALIZE ---
 
 print("Executing Sentinel Hub request...")
+
 try:
+    # Get the data as numpy array
     data = request.get_data()
+    ndvi_array = data[0]
+    
+    print(f"\n✅ Request successful!")
+    print(f"NDVI array shape: {ndvi_array.shape}")
+    
+    # Save as a visual RGB TIFF for image viewers
+    from PIL import Image
+    
+    # Normalize NDVI from [-1, 1] to [0, 255] for RGB visualization
+    # Apply colormap: red for low values, yellow for medium, green for high
+    ndvi_normalized = np.clip((ndvi_array + 1) / 2, 0, 1)  # Map [-1,1] to [0,1]
+    
+    # Create RGB image using matplotlib colormap
+    from matplotlib import cm
+    colormap = cm.get_cmap('RdYlGn')
+    rgb_array = colormap(ndvi_normalized)
+    rgb_array = (rgb_array[:, :, :3] * 255).astype(np.uint8)  # Convert to 8-bit RGB
+    
+    # Save as regular TIFF
+    output_filename = "ndvi_trnava_aug_2023_visual.tif"
+    img = Image.fromarray(rgb_array)
+    img.save(output_filename)
+    print(f"Visual TIFF saved to: {output_filename}")
+    
+    # Also save the georeferenced version for GIS use
+    request.save_data(redownload=True)
+    print(f"Georeferenced GeoTIFF saved to: ./e7b26b530a0ec6c28408f96c265692f5/response.tiff")
+    
 except Exception as e:
     print(f"An error occurred during request execution: {e}")
     print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
     exit()
 
-# The result is a list of data arrays (one for each time step requested, which is usually one)
-ndvi_array = data[0]
-
-# Save the GeoTIFF file (metadata for georeferencing is included by default)
-output_filename = "ndvi_fresno_aug_2023.tif"
-with open(output_filename, 'wb') as f:
-    f.write(ndvi_array.tobytes())
-
-print(f"\n✅ Request successful! Data saved to: {output_filename}")
-print(f"Shape of the resulting array: {ndvi_array.shape}")
-
 # Optional: Visualize the result
 plt.figure(figsize=(8, 8))
-# Squeeze to remove the single-band dimension (512, 512, 1) -> (512, 512)
-plt.imshow(np.squeeze(ndvi_array), cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
+plt.imshow(ndvi_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
 plt.colorbar(label='NDVI Value', orientation='vertical')
-plt.title(f"NDVI from Sentinel-2 (Least Cloudy in August 2023)")
+plt.title(f"NDVI from Sentinel-2 (Trnava, August 2023)")
 plt.xlabel("Pixel X")
 plt.ylabel("Pixel Y")
 plt.show()
