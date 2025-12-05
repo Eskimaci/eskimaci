@@ -1,5 +1,4 @@
 import rasterio
-from rasterio.mask import mask
 import numpy as np
 import matplotlib.pyplot as plt
 
