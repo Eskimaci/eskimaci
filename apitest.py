@@ -14,13 +14,11 @@ from sentinelhub import (
 
 # --- 1. CONFIGURATION ---
 
-# !!! REPLACE THESE WITH YOUR ACTUAL SENTINEL HUB CREDENTIALS !!!
-# You can get these from your Sentinel Hub Dashboard
-clinet_id = config('CLIENT_ID')
-client_secret = config('CLIENT_SECRET')
-CLIENT_ID = clinet_id
-CLIENT_SECRET = client_secret
+# Load credentials from .env file
+CLIENT_ID = config('CLIENT_ID')
+CLIENT_SECRET = config('CLIENT_SECRET')
 
+# Configure Sentinel Hub API
 config = SHConfig()
 config.sh_client_id = CLIENT_ID
 config.sh_client_secret = CLIENT_SECRET
