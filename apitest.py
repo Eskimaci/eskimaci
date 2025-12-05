@@ -207,11 +207,7 @@ requestLCI = SentinelHubRequest(
 
 print("Executing Sentinel Hub request...")
 
-def craeteNDVItiff(ndvi_array):
-    try:            
-        print(f"\n✅ Request successful!")
-        print(f"NDVI array shape: {ndvi_array.shape}")
-        
+def createNDVItiff(ndvi_array):         
         # Save as a visual RGB TIFF for image viewers
         from PIL import Image
         
@@ -235,11 +231,6 @@ def craeteNDVItiff(ndvi_array):
         # Also save the georeferenced version for GIS use
         requestNDVI.save_data(redownload=True)
         print(f"Georeferenced GeoTIFF saved to: ./e7b26b530a0ec6c28408f96c265692f5/response.tiff")
-        
-    except Exception as e:
-        print(f"An error occurred during request execution: {e}")
-        print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
-        exit()
 
 def createLCItiff(lci_array):
     from PIL import Image
@@ -286,30 +277,38 @@ def createLCItiff(lci_array):
     requestLCI.save_data(redownload=True)
     print(f"Georeferenced GeoTIFF saved for GIS use from request object.") 
 
+if __name__ == "__main__":
+    try:
+        print(f"\n✅ Request successful!")
+        dataNDVI = requestNDVI.get_data()
+        ndvi_array = dataNDVI[0]
+        print(f"NDVI array shape: {ndvi_array.shape}")
 
-dataNDVI = requestNDVI.get_data()
-ndvi_array = dataNDVI[0]
+        dataLCI = requestLCI.get_data()
+        lci_array = dataLCI[0]
 
-dataLCI = requestLCI.get_data()
-lci_array = dataLCI[0]
+        createNDVItiff(ndvi_array)
+        createLCItiff(lci_array)
 
-craeteNDVItiff(ndvi_array)
-createLCItiff(lci_array)
+    except Exception as e:
+        print(f"An error occurred during request execution: {e}")
+        print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
+        exit()
 
-# Optional: Visualize the result
-plt.figure(figsize=(8, 8))
-plt.imshow(ndvi_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
-plt.colorbar(label='NDVI Value', orientation='vertical')
-plt.title(f"NDVI from Sentinel-2 (Trnava, August 2023)")
-plt.xlabel("Pixel X")
-plt.ylabel("Pixel Y")
-plt.show()
+        # Optional: Visualize the result
+        plt.figure(figsize=(8, 8))
+        plt.imshow(ndvi_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
+        plt.colorbar(label='NDVI Value', orientation='vertical')
+        plt.title(f"NDVI from Sentinel-2 (Trnava, August 2023)")
+        plt.xlabel("Pixel X")
+        plt.ylabel("Pixel Y")
+        plt.show()
 
 
-plt.figure(figsize=(8, 8))
-plt.imshow(lci_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
-plt.colorbar(label='LCI Value', orientation='vertical')
-plt.title(f"LCI from Sentinel-2 (Trnava, August 2023)")
-plt.xlabel("Pixel X")
-plt.ylabel("Pixel Y")
-plt.show()
+        plt.figure(figsize=(8, 8))
+        plt.imshow(lci_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
+        plt.colorbar(label='LCI Value', orientation='vertical')
+        plt.title(f"LCI from Sentinel-2 (Trnava, August 2023)")
+        plt.xlabel("Pixel X")
+        plt.ylabel("Pixel Y")
+        plt.show()
