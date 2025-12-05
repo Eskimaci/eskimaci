@@ -116,19 +116,53 @@ function evaluatePixel(sample) {
   if (sample.dataMask === 0) {
     return [0]; // Return 0 (water/bare soil range) for no data
   }
-  
+  // Calculate NDVI
   let numerator = sample.B08 - sample.B04;
   let denominator = sample.B08 + sample.B04;
   
   let ndvi = numerator / denominator;
-  
+
+
   return [ndvi];
+}
+"""
+
+EVALSCRIPT_LCI = """
+//VERSION=3
+function setup() {
+  return {
+    input: [{ bands: ["B04", "B05", "B08", "dataMask"] }], 
+    output: { bands: 1, sampleType: "FLOAT32" } // Output LCI as a single floating-point band
+  };
+}
+
+function evaluatePixel(sample) {
+  // Check for valid data
+  if (sample.dataMask === 0) {
+    return [0]; 
+  }
+  
+  // Sentinel-2 L2A values are in the range 0 to 1
+  let B04 = sample.B04; // Red
+  let B05 = sample.B05; // Red Edge
+  let B08 = sample.B08; // NIR
+
+  // Calculate MCARI (Modified Chlorophyll Absorption Reflectance Index)
+  let MCARI = (B05 - B04) - 0.2 * (B05 - B08);
+
+  // Calculate OSAVI (Optimized Soil Adjusted Vegetation Index) with L=0.16
+  let OSAVI = 1.16 * (B08 + 0.16);
+  
+  // Calculate LCI proxy using the MCARI/OSAVI ratio
+  let LCI = (MCARI * (B05 / B04)) / OSAVI;
+  
+  return [LCI];
 }
 """
 
 # --- 4. BUILD THE REQUEST ---
 
-request = SentinelHubRequest(
+requestNDVI = SentinelHubRequest(
     evalscript=EVALSCRIPT_NDVI,
     input_data=[
         SentinelHubRequest.input_data(
@@ -150,51 +184,133 @@ request = SentinelHubRequest(
     config=config
 )
 
+requestLCI = SentinelHubRequest(
+    evalscript=EVALSCRIPT_LCI,
+    input_data=[
+        SentinelHubRequest.input_data(
+            data_collection=DataCollection.SENTINEL2_L2A,
+            time_interval=TIME_INTERVAL,
+            mosaicking_order=MosaickingOrder.LEAST_CC,
+        )
+    ],
+    responses=[
+        SentinelHubRequest.output_response(
+            'default', 
+            OUTPUT_FORMAT
+        )
+    ],
+    geometry = AOI_GEOMETRY,
+    size=OUTPUT_SIZE,
+    data_folder='.',
+    config=config
+)
+
 # --- 5. EXECUTE AND VISUALIZE ---
 
 print("Executing Sentinel Hub request...")
 
-try:
-    # Get the data as numpy array
-    data = request.get_data()
-    ndvi_array = data[0]
-    
-    print(f"\n✅ Request successful!")
-    print(f"NDVI array shape: {ndvi_array.shape}")
-    
-    # Save as a visual RGB TIFF for image viewers
+def craeteNDVItiff(dataNDVI, ndvi_array):
+    try:            
+        print(f"\n✅ Request successful!")
+        print(f"NDVI array shape: {ndvi_array.shape}")
+        
+        # Save as a visual RGB TIFF for image viewers
+        from PIL import Image
+        
+        # Normalize NDVI from [-1, 1] to [0, 255] for RGB visualization
+        # Apply colormap: red for low values, yellow for medium, green for high
+        ndvi_normalized = np.clip((ndvi_array + 1) / 2, 0, 1)  # Map [-1,1] to [0,1]
+
+        
+        # Create RGB image using matplotlib colormap
+        from matplotlib import cm
+        colormap = cm.get_cmap('RdYlGn')
+        rgb_array = colormap(ndvi_normalized)
+        rgb_array = (rgb_array[:, :, :3] * 255).astype(np.uint8)  # Convert to 8-bit RGB
+        
+        # Save as regular TIFF
+        output_filename = "ndvi_trnava_aug_2023_visual.tif"
+        img = Image.fromarray(rgb_array)
+        img.save(output_filename)
+        print(f"Visual TIFF saved to: {output_filename}")
+        
+        # Also save the georeferenced version for GIS use
+        requestNDVI.save_data(redownload=True)
+        print(f"Georeferenced GeoTIFF saved to: ./e7b26b530a0ec6c28408f96c265692f5/response.tiff")
+        
+    except Exception as e:
+        print(f"An error occurred during request execution: {e}")
+        print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
+        exit()
+
+def createLCItiff(dataLCI, lci_array):
     from PIL import Image
-    
-    # Normalize NDVI from [-1, 1] to [0, 255] for RGB visualization
-    # Apply colormap: red for low values, yellow for medium, green for high
-    ndvi_normalized = np.clip((ndvi_array + 1) / 2, 0, 1)  # Map [-1,1] to [0,1]
-    
-    # Create RGB image using matplotlib colormap
     from matplotlib import cm
-    colormap = cm.get_cmap('RdYlGn')
-    rgb_array = colormap(ndvi_normalized)
-    rgb_array = (rgb_array[:, :, :3] * 255).astype(np.uint8)  # Convert to 8-bit RGB
+    import numpy as np
+    # --- LCI NORMALIZATION AND CLIPPING ---
+        
+    # 1. Define a Visualization Range for LCI
+    # LCI values often range from 0 (low/bare) up to around 1.5 - 2.5 for dense, healthy canopy.
+    LCI_MIN = 0.0  # Assumed minimum (bare soil/water)
+    LCI_MAX = 2.0  # Assumed maximum for visualization (high chlorophyll)
     
-    # Save as regular TIFF
-    output_filename = "ndvi_trnava_aug_2023_visual.tif"
-    img = Image.fromarray(rgb_array)
+    # 2. Clip the LCI data to the visualization range
+    lci_clipped = np.clip(lci_array, LCI_MIN, LCI_MAX)
+    
+    # 3. Normalize the clipped data from [LCI_MIN, LCI_MAX] to [0, 1]
+    lci_normalized = (lci_clipped - LCI_MIN) / (LCI_MAX - LCI_MIN)
+    
+    # --- VISUALIZATION ---
+    
+    # Create RGB image using matplotlib colormap (RdYlGn is good for vegetation indices)
+    # Note: You need to specify a color map name, not cm.get_cmap('RdYlGn') directly 
+    # as it may be deprecated in newer matplotlib versions.
+    colormap = cm.get_cmap('RdYlGn') 
+    
+    # Map the normalized [0, 1] data to RGB colors
+    rgb_array = colormap(lci_normalized)
+    
+    # Convert the RGB array (which is currently float [0, 1]) to 8-bit RGB [0, 255]
+    # We only take the first three channels (R, G, B), ignoring the alpha channel (A)
+    rgb_array_8bit = (rgb_array[:, :, :3] * 255).astype(np.uint8)
+    
+    # --- SAVE FILES ---
+    
+    # Save as a regular visual TIFF
+    output_filename = "lci_trnava_aug_2023_visual.tif"
+    img = Image.fromarray(rgb_array_8bit)
     img.save(output_filename)
     print(f"Visual TIFF saved to: {output_filename}")
     
-    # Also save the georeferenced version for GIS use
-    request.save_data(redownload=True)
-    print(f"Georeferenced GeoTIFF saved to: ./e7b26b530a0ec6c28408f96c265692f5/response.tiff")
-    
-except Exception as e:
-    print(f"An error occurred during request execution: {e}")
-    print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
-    exit()
+    # Also save the georeferenced version for GIS use (assuming 'requestLCI' is your request object)
+    # You would change 'requestNDVI' to the actual name of your LCI request object.
+    # This part requires you to have the original request object available.
+    requestLCI.save_data(redownload=True)
+    print(f"Georeferenced GeoTIFF saved for GIS use from request object.") 
+
+
+dataNDVI = requestNDVI.get_data()
+ndvi_array = dataNDVI[0]
+
+dataLCI = requestLCI.get_data()
+lci_array = dataLCI[0]
+
+craeteNDVItiff(dataNDVI, ndvi_array)
 
 # Optional: Visualize the result
 plt.figure(figsize=(8, 8))
 plt.imshow(ndvi_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
 plt.colorbar(label='NDVI Value', orientation='vertical')
 plt.title(f"NDVI from Sentinel-2 (Trnava, August 2023)")
+plt.xlabel("Pixel X")
+plt.ylabel("Pixel Y")
+plt.show()
+
+
+plt.figure(figsize=(8, 8))
+plt.imshow(lci_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
+plt.colorbar(label='LCI Value', orientation='vertical')
+plt.title(f"LCI from Sentinel-2 (Trnava, August 2023)")
 plt.xlabel("Pixel X")
 plt.ylabel("Pixel Y")
 plt.show()
