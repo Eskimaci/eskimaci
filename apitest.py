@@ -8,7 +8,8 @@ from sentinelhub import (
     CRS, 
     BBox, 
     SHConfig,
-    MosaickingOrder
+    MosaickingOrder,
+    Geometry
 )
 
 # --- 1. CONFIGURATION ---
@@ -26,10 +27,67 @@ config.sh_client_secret = CLIENT_SECRET
 
 # --- 2. DEFINE REQUEST PARAMETERS ---
 
-# Area of Interest (AOI): A small agricultural area near Fresno, California
+# Area of Interest (AOI): Trnava
 # Coordinates are defined as (min_x, min_y, max_x, max_y) in WGS84 CRS (EPSG:4326)
-AOI_BBOX = [-119.5, 36.6, -119.4, 36.7]
-AOI_CRS = CRS.WGS84 
+polygon_coordinates = [
+    [
+              17.572404371198303,
+              48.38602850840101
+            ],
+            [
+              17.54711099372517,
+              48.38190722723843
+            ],
+            [
+              17.547585841075488,
+              48.37002151811984
+            ],
+            [
+              17.57025398010623,
+              48.34845776922049
+            ],
+            [
+              17.629438958596808,
+              48.33751242125385
+            ],
+            [
+              17.650432762218827,
+              48.36050767001183
+            ],
+            [
+              17.609390031826052,
+              48.3768349941939
+            ],
+            [
+              17.61439982889695,
+              48.391254333499944
+            ],
+            [
+              17.58361950944743,
+              48.4043997142976
+            ],
+            [
+              17.560951961203756,
+              48.3925219286466
+            ],
+            [
+              17.567871150498718,
+              48.38824510665356
+            ],
+            [
+              17.572404371198303,
+              48.38602850840101
+            ]
+]
+
+
+AOI_GEOMETRY = Geometry(
+    geometry={
+        "type": "Polygon",  
+        "coordinates": [polygon_coordinates]
+    },
+    crs=CRS.WGS84
+)
 
 # Time range for the request (Look for a single, cloud-free image)
 TIME_INTERVAL = ('2023-08-01', '2023-08-30')
@@ -86,7 +144,7 @@ request = SentinelHubRequest(
             OUTPUT_FORMAT
         )
     ],
-    bbox=BBox(bbox=AOI_BBOX, crs=AOI_CRS),
+    geometry = AOI_GEOMETRY,
     size=OUTPUT_SIZE,
     config=config
 )
