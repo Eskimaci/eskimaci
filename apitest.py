@@ -207,7 +207,7 @@ requestLCI = SentinelHubRequest(
 
 print("Executing Sentinel Hub request...")
 
-def craeteNDVItiff(dataNDVI, ndvi_array):
+def craeteNDVItiff(ndvi_array):
     try:            
         print(f"\n✅ Request successful!")
         print(f"NDVI array shape: {ndvi_array.shape}")
@@ -241,7 +241,7 @@ def craeteNDVItiff(dataNDVI, ndvi_array):
         print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
         exit()
 
-def createLCItiff(dataLCI, lci_array):
+def createLCItiff(lci_array):
     from PIL import Image
     from matplotlib import cm
     import numpy as np
@@ -293,7 +293,8 @@ ndvi_array = dataNDVI[0]
 dataLCI = requestLCI.get_data()
 lci_array = dataLCI[0]
 
-craeteNDVItiff(dataNDVI, ndvi_array)
+craeteNDVItiff(ndvi_array)
+createLCItiff(lci_array)
 
 # Optional: Visualize the result
 plt.figure(figsize=(8, 8))
