@@ -241,7 +241,7 @@ def createLCItiff(lci_array):
     # 1. Define a Visualization Range for LCI
     # LCI values often range from 0 (low/bare) up to around 1.5 - 2.5 for dense, healthy canopy.
     LCI_MIN = 0.0  # Assumed minimum (bare soil/water)
-    LCI_MAX = 2.0  # Assumed maximum for visualization (high chlorophyll)
+    LCI_MAX = 1.0  # Assumed maximum for visualization (high chlorophyll)
     
     # 2. Clip the LCI data to the visualization range
     lci_clipped = np.clip(lci_array, LCI_MIN, LCI_MAX)
