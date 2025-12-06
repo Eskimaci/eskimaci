@@ -576,7 +576,8 @@
                 // Parse the plot data and render it
                 const ndviData = JSON.parse(data.ndvi_data);
                 const tempData = JSON.parse(data.temp_data);
-                renderPlots(ndviData, tempData);
+                const thresholdDates = JSON.parse(data.threshold_dates);
+                renderPlots(ndviData, tempData, thresholdDates);
                 
             } catch (error) {
                 console.error('Plot error:', error);
@@ -589,7 +590,7 @@
             }
         }
         
-        function renderPlots(ndviGraphs, tempGraphs) {
+        function renderPlots(ndviGraphs, tempGraphs, thresholdDates) {
             const resultsSection = document.getElementById('results');
             if (!resultsSection) return;
             
@@ -657,6 +658,58 @@
             const ndviPlot = document.getElementById('ndvi-chart-container');
             const tempPlot = document.getElementById('temp-chart-container');
             
+            // Add threshold markers to temperature plot as scatter points
+            const markerTraces = [];
+            
+            // Get the actual rendered colors from the plot
+            const renderedData = tempPlot.data;
+            
+            Object.entries(thresholdDates).forEach(([yearCol, info], index) => {
+                // Find the corresponding line to get its color
+                const lineIndex = tempGraphs.findIndex(trace => trace.name === yearCol);
+                if (lineIndex === -1) return; // Skip if year not found
+                
+                // Get the actual color from the rendered trace
+                const lineColor = renderedData[lineIndex].line.color;
+                
+                // Create scatter trace for the 5-day period
+                const dates = [];
+                const values = [];
+                
+                // Get the temperature values for the 5-day period
+                for (let i = info.start_index; i <= info.end_index; i++) {
+                    dates.push(tempGraphs[lineIndex].x[i]);
+                    values.push(tempGraphs[lineIndex].y[i]);
+                }
+                
+                const markerTrace = {
+                    x: dates,
+                    y: values,
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: `${yearCol} - Threshold`,
+                    marker: {
+                        size: 10,
+                        color: lineColor,
+                        symbol: 'diamond',
+                        line: {
+                            color: lineColor,
+                            width: 2
+                        }
+                    },
+                    opacity: 0.7,
+                    showlegend: false,
+                    hovertemplate: `<b>${yearCol}</b><br>5+ days ≥5°C<br>%{x}<br>%{y:.1f}°C<extra></extra>`
+                };
+                
+                markerTraces.push(markerTrace);
+            });
+            
+            // Add marker traces to the temperature plot
+            if (markerTraces.length > 0) {
+                Plotly.addTraces('temp-chart-container', markerTraces);
+            }
+            
             // Function to toggle highlight on both plots
             function toggleHighlight(curveNumber) {
                 // Toggle the line
@@ -674,6 +727,7 @@
                 const ndviWidths = [];
                 const tempOpacities = [];
                 const tempWidths = [];
+                const markerOpacities = [];
 
                 for(let i=0; i < ndviGraphs.length; i++){
                     if (highlightedLines.has(i)) {
@@ -682,31 +736,43 @@
                         ndviWidths.push(5);
                         tempOpacities.push(1.0);
                         tempWidths.push(5);
+                        markerOpacities.push(1.0);
                     } else if (highlightedLines.size > 0) {
                         // Non-highlighted lines when at least one is highlighted
                         ndviOpacities.push(0.7);
                         ndviWidths.push(2.5);
                         tempOpacities.push(0.15);
                         tempWidths.push(1.5);
+                        markerOpacities.push(0.15); // Match line opacity
                     } else {
                         // Default state when nothing is highlighted
                         ndviOpacities.push(0.7);
                         ndviWidths.push(2.5);
                         tempOpacities.push(0.7);
                         tempWidths.push(2.5);
+                        markerOpacities.push(0.7); // Match line opacity
                     }
                 }
 
                 // Update both plots with different opacity values
+                // Only update the first N traces (the actual data lines, not markers)
+                const traceIndices = [...Array(ndviGraphs.length).keys()];
+                
                 Plotly.restyle('ndvi-chart-container', {
                     'opacity': ndviOpacities, 
                     'line.width': ndviWidths
-                });
+                }, traceIndices);
                 
                 Plotly.restyle('temp-chart-container', {
                     'opacity': tempOpacities, 
                     'line.width': tempWidths
-                });
+                }, traceIndices);
+                
+                // Update marker opacities to match their corresponding lines
+                const markerIndices = [...Array(markerOpacities.length).keys()].map(i => i + ndviGraphs.length);
+                Plotly.restyle('temp-chart-container', {
+                    'opacity': markerOpacities
+                }, markerIndices);
             }
 
             // NDVI plot event handlers
@@ -738,28 +804,44 @@
                 highlightedLines.clear();
                 const resetOpacities = Array(ndviGraphs.length).fill(0.7);
                 const resetWidths = Array(ndviGraphs.length).fill(2.5);
+                const traceIndices = [...Array(ndviGraphs.length).keys()];
+                
                 Plotly.restyle('ndvi-chart-container', {
                     'opacity': resetOpacities, 
                     'line.width': resetWidths
-                });
+                }, traceIndices);
                 Plotly.restyle('temp-chart-container', {
                     'opacity': resetOpacities, 
                     'line.width': resetWidths
-                });
+                }, traceIndices);
+                
+                // Reset marker opacities to match line opacity
+                const markerIndices = [...Array(resetOpacities.length).keys()].map(i => i + ndviGraphs.length);
+                Plotly.restyle('temp-chart-container', {
+                    'opacity': resetOpacities
+                }, markerIndices);
             });
             
             tempPlot.on('plotly_doubleclick', function(){
                 highlightedLines.clear();
                 const resetOpacities = Array(tempGraphs.length).fill(0.7);
                 const resetWidths = Array(tempGraphs.length).fill(2.5);
+                const traceIndices = [...Array(tempGraphs.length).keys()];
+                
                 Plotly.restyle('ndvi-chart-container', {
                     'opacity': resetOpacities, 
                     'line.width': resetWidths
-                });
+                }, traceIndices);
                 Plotly.restyle('temp-chart-container', {
                     'opacity': resetOpacities, 
                     'line.width': resetWidths
-                });
+                }, traceIndices);
+                
+                // Reset marker opacities to match line opacity
+                const markerIndices = [...Array(resetOpacities.length).keys()].map(i => i + tempGraphs.length);
+                Plotly.restyle('temp-chart-container', {
+                    'opacity': resetOpacities
+                }, markerIndices);
             });
         }
 

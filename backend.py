@@ -78,6 +78,24 @@ def plot():
         # Load temperature data
         temp_df = pd.read_csv('static/temperature_comparison.csv')
         
+        # Find first occurrence of 5 consecutive days above 5°C for each year
+        temp_threshold = 5
+        days_threshold = 5
+        threshold_dates = {}
+        
+        for year_col in temp_df.columns[1:]:  # Skip first column (date)
+            for i in range(len(temp_df) - days_threshold + 1):
+                # Check if 5 consecutive days are all >= 5°C
+                five_day_temps = temp_df[year_col].iloc[i:i + days_threshold]
+                if five_day_temps.min() >= temp_threshold:
+                    threshold_dates[year_col] = {
+                        'start_index': i,
+                        'end_index': i + days_threshold - 1,
+                        'start_date': temp_df['date'].iloc[i],
+                        'end_date': temp_df['date'].iloc[i + days_threshold - 1]
+                    }
+                    break
+        
         temp_traces = []
         for year_col in temp_df.columns[1:]:  # Skip first column (date)
             trace = go.Scatter(
@@ -93,10 +111,12 @@ def plot():
         
         ndvi_json = json.dumps(ndvi_traces, cls=plotly.utils.PlotlyJSONEncoder)
         temp_json = json.dumps(temp_traces, cls=plotly.utils.PlotlyJSONEncoder)
+        threshold_json = json.dumps(threshold_dates)
         
         return jsonify({
             "ndvi_data": ndvi_json,
-            "temp_data": temp_json
+            "temp_data": temp_json,
+            "threshold_dates": threshold_json
         })
     
     except Exception as e:
