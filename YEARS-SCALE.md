@@ -7,7 +7,7 @@ Tento dokument popisuje účel a použitie skriptu `long_term_analysis.py`.
 Skript spustíte jednoduchým príkazom v termináli z hlavného adresára projektu:
 
 ```bash
-python long_term_analysis.py
+python long_term_analysis_trnava.py
 ```
 
 ## Ako to funguje
