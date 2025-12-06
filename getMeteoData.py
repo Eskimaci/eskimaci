@@ -1,23 +1,25 @@
+import matplotlib
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import openmeteo_requests
-
 import pandas as pd
 import requests_cache
 from retry_requests import retry
 
 # Setup the Open-Meteo API client with cache and retry on error
-cache_session = requests_cache.CachedSession('.cache', expire_after = -1)
-retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
-openmeteo = openmeteo_requests.Client(session = retry_session)
+cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
+retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+openmeteo = openmeteo_requests.Client(session=retry_session)
 
 # Make sure all required weather variables are listed here
 # The order of variables in hourly or daily is important to assign them correctly below
 url = "https://archive-api.open-meteo.com/v1/archive"
 params = {
-	"latitude": 52.52,
-	"longitude": 13.41,
-	"start_date": "2020-01-01",
-	"end_date": "2025-12-04",
-	"daily": "temperature_2m_mean",
+    "latitude": 52.52,
+    "longitude": 13.41,
+    "start_date": "2020-01-01",
+    "end_date": "2025-12-04",
+    "daily": "temperature_2m_mean",
 }
 responses = openmeteo.weather_api(url, params=params)
 
@@ -32,37 +34,34 @@ daily = response.Daily()
 daily_temperature_2m_mean = daily.Variables(0).ValuesAsNumpy()
 
 daily_data = {"date": pd.date_range(
-	start = pd.to_datetime(daily.Time(), unit = "s", utc = True),
-	end =  pd.to_datetime(daily.TimeEnd(), unit = "s", utc = True),
-	freq = pd.Timedelta(seconds = daily.Interval()),
-	inclusive = "left"
+    start=pd.to_datetime(daily.Time(), unit="s", utc=True),
+    end=pd.to_datetime(daily.TimeEnd(), unit="s", utc=True),
+    freq=pd.Timedelta(seconds=daily.Interval()),
+    inclusive="left"
 )}
 
 daily_data["temperature_2m_mean"] = daily_temperature_2m_mean
 
-daily_dataframe = pd.DataFrame(data = daily_data)
+daily_dataframe = pd.DataFrame(data=daily_data)
 
 years = range(2020, 2026)
 data = []
 for year in years:
-  df = daily_dataframe[(daily_dataframe['date'] >= pd.Timestamp(str(year) + '-01-15', tz='UTC')) & (daily_dataframe['date'] <= pd.Timestamp(str(year) + '-07-31', tz='UTC'))]
-  data.append(df)
+    df = daily_dataframe[(daily_dataframe['date'] >= pd.Timestamp(str(year) + '-01-15', tz='UTC')) & (
+            daily_dataframe['date'] <= pd.Timestamp(str(year) + '-07-31', tz='UTC'))]
+    data.append(df)
 
 temp_threshold = 5
 days_threshold = 5
 start_days = []
 for year in range(len(years)):
-  for i in range(data[year]['date'].size-days_threshold):
-    if data[year]['temperature_2m_mean'][i:i+days_threshold].min() >= temp_threshold:
-      print(data[year][:][i:i+days_threshold])
-      start_days.append(i)
-      break
-
-import matplotlib
+    for i in range(data[year]['date'].size - days_threshold):
+        if data[year]['temperature_2m_mean'][i:i + days_threshold].min() >= temp_threshold:
+            print(data[year][:][i:i + days_threshold])
+            start_days.append(i)
+            break
 
 matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 fig, ax = plt.subplots(figsize=(12, 7))
 arbitrary_common_year = 2024
@@ -87,17 +86,15 @@ for i in range(len(years)):
         init_highlight_visible = False
         init_zorder = 1
 
-
-
     line, = ax.plot(data[i]['date'], data[i]['temperature_2m_mean'],
                     label=f'Rok {years[i]}',
                     linewidth=init_lw, alpha=init_alpha,
-                    zorder=init_zorder, picker = 5)
-    #lines.append(line)
+                    zorder=init_zorder, picker=5)
+    # lines.append(line)
     line_color = line.get_color()
     mask = (data[i]['date'] >= start_date) & (data[i]['date'] <= end_date)
     highlight_data = data[i].loc[mask]
-    #ax.plot(highlight_data['date'], highlight_data['temperature_2m_mean'], color=line_color, linewidth=4, marker='o', markersize=5)
+    # ax.plot(highlight_data['date'], highlight_data['temperature_2m_mean'], color=line_color, linewidth=4, marker='o', markersize=5)
     highlight, = ax.plot(highlight_data['date'], highlight_data['temperature_2m_mean'],
                          color="#000000", linewidth=4, marker='o', markersize=5,
                          visible=init_highlight_visible,  # Set visibility based on default
@@ -156,12 +153,13 @@ def on_pick(event):
 
         fig.canvas.draw()
 
+
 fig.canvas.mpl_connect("pick_event", on_pick)
 
 ax.set_title("Temperature Trends (5-Day Highlight)", fontsize=16)
 ax.set_xlabel("Date")
 ax.set_ylabel("Temperature Mean")
-#ax.legend()
+# ax.legend()
 ax.grid(True, linestyle='--', alpha=0.5)
 
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
