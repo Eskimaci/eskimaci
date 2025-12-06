@@ -93,7 +93,7 @@ TIME_INTERVAL = ('2023-08-01', '2023-08-30')
 # Output resolution and format
 # 1000x1000 pixels for the requested bounding box
 OUTPUT_SIZE = [1000, 1000] 
-OUTPUT_FORMAT = MimeType.TIFF 
+OUTPUT_FORMAT = MimeType.TIFF
 
 # --- 3. THE EVALSCRIPT (JavaScript logic) ---
 
