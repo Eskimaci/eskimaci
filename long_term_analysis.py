@@ -4,16 +4,17 @@ Skript pre dlhodobú analýzu vegetačného indexu (NDVI) z dát Sentinel-2.
 
 Tento skript vykonáva nasledujúce kroky:
 1. Pripojí sa k Sentinel Hub API.
-2. Pre definovanú oblasť (Trnava) a časové obdobie (2020-2025, mesiace február-júl) 
+2. Pre definovanú oblasť (Trnava) a časové obdobie (posledné 3 roky, mesiac august) 
    stiahne dáta NDVI.
-3. Vypočíta priemernú hodnotu NDVI pre každý mesiac naprieč všetkými rokmi.
-4. Vytvorí a uloží graf zobrazujúci priemernú hodnotu NDVI pre jednotlivé mesiace.
+3. Vypočíta trend vývoja vegetácie pre každý pixel pomocou lineárnej regresie.
+4. Vytvorí a uloží sumárnu mapu, ktorá farebne vizualizuje tento trend 
+   (zlepšenie, zhoršenie, stabilný stav).
 """
 
-from matplotlib import colors
 import numpy as np
 from decouple import config
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from sentinelhub import (
     SentinelHubRequest,
     DataCollection,
@@ -69,26 +70,13 @@ BI_WEEKLY_PERIODS = [
     (7, 15, 7, 31, 'Jul 15-31'),
 ]
 
-# Definovanie oblasti záujmu (AOI) - park Janka Kráľa v Trnave
+# Definovanie oblasti záujmu (AOI) - Trnava
 POLYGON_COORDINATES = [
-    [17.56817676145432, 48.36381310513961],
-    [17.56981977533604, 48.36359325939384],
-    [17.57174067288043, 48.36399500611071],
-    [17.57313437147868, 48.36471674075158],
-    [17.57267368229819, 48.36520459481028],
-    [17.57290262998025, 48.36555138873172],
-    [17.5810650959477, 48.36958824198187],
-    [17.58138863017993, 48.36935271412575],
-    [17.58186315196065, 48.36958889475593],
-    [17.58223565532713, 48.3695203311474],
-    [17.58275839314176, 48.36977717283936],
-    [17.58309114863392, 48.37065902992905],
-    [17.58280761897207, 48.37081050876479],
-    [17.58292551563057, 48.37106539370707],
-    [17.58277629388541, 48.37119493710695],
-    [17.56817676145432, 48.36381310513961]
+    [[17.5724, 48.3860], [17.5471, 48.3819], [17.5475, 48.3700], [17.5702, 48.3484],
+     [17.6294, 48.3375], [17.6504, 48.3605], [17.6093, 48.3768], [17.6143, 48.3912],
+     [17.5836, 48.4043], [17.5609, 48.3925], [17.5678, 48.3882], [17.5724, 48.3860]]
 ]
-zelenePlochy = []
+AOI_GEOMETRY = Geometry(geometry={"type": "Polygon", "coordinates": POLYGON_COORDINATES}, crs=CRS.WGS84)
 
 with open('static/geojson/parkJankaKrala.geojson', 'r') as geojsonFile:
     geojsonData = json.load(geojsonFile)
@@ -124,6 +112,7 @@ with open('static/geojson/nemocnicnyPark.geojson' , 'r') as geojsonFile:
     nemocnicnyPark = park("Nemocnicny Park", geojsonData['features'][0]['geometry']['coordinates'][0])
 
 zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast, nemocnicnyPark]
+
 # Výstupné parametre
 OUTPUT_SIZE = [1000, 1000]
 OUTPUT_FORMAT = MimeType.TIFF
@@ -226,21 +215,19 @@ def get_ndvi_for_period(year, start_month, start_day, end_month, end_day, period
     time_interval = (f'{year}-{start_month:02d}-{start_day:02d}', f'{year}-{end_month:02d}-{end_day:02d}')
     
     request = SentinelHubRequest(
-            evalscript=EVALSCRIPT_NDVI,
-            input_data=[
-                SentinelHubRequest.input_data(
-                    data_collection=DataCollection.SENTINEL2_L2A,
-                    time_interval=time_interval,
-                    mosaicking_order=MosaickingOrder.LEAST_CC,
-                )
-            ],
-            responses=[
-                SentinelHubRequest.output_response('default', OUTPUT_FORMAT)
-            ],
-            geometry=geometry,
-            size=size,
-            config=config
-        )
+        evalscript=EVALSCRIPT_NDVI,
+        input_data=[
+            SentinelHubRequest.input_data(
+                data_collection=DataCollection.SENTINEL2_L2A,
+                time_interval=time_interval,
+                mosaicking_order=MosaickingOrder.LEAST_CC,
+            )
+        ],
+        responses=[SentinelHubRequest.output_response('default', OUTPUT_FORMAT)],
+        geometry=geometry,
+        size=size,
+        config=config
+    )
     try:
         data = request.get_data(save_data=False)
         if not data:
@@ -372,9 +359,6 @@ def main():
             csv_writer.writerow(row)
     
     print(f"✅ CSV súbor úspešne uložený ako: {csv_filename}")
-
-    # Zobrazenie grafu
-    plt.show()
 
 if __name__ == "__main__":
     main()
