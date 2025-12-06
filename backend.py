@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, jsonify, render_template, render_template_string, request, send_from_directory
 from long_term_analysis_trnava import generate_trend_map
 import logging
 import os
+import plotly.graph_objs as go
+import plotly.utils
+import json
+import pandas as pd
+import io
+
 
 # --- 1. NASTAVENIE APLIKÁCIE ---
 app = Flask(__name__, static_folder='static')
@@ -29,6 +35,93 @@ def index():
 def send_static(path):
     """Servíruje statické súbory (ako CSS, JS, a vygenerované obrázky)."""
     return send_from_directory('static', path)
+
+
+@app.route('/api/plot', methods=['POST'])
+def plot():
+    try:
+        data = request.get_json()
+        location = data.get('location')
+        
+        # Map location values to CSV filenames
+        location_map = {
+            'janka-krala': 'janka-krala.csv',
+            'nemocnicny': 'nemocnicny.csv',
+            'strky': 'strky.csv',
+            'druzba': 'druzba.csv',
+            'zahradkarska': 'zahradkarska.csv',
+            'kamenac': 'kamenac.csv',
+            'rybniky': 'rybniky.csv'
+        }
+        
+        csv_file = location_map.get(location)
+        if not csv_file:
+            return jsonify({"error": "Neplatná lokalita"}), 400
+        
+        # Load NDVI data
+        csv_path = f'static/csv_interpol_lin/{csv_file}'
+        df = pd.read_csv(csv_path)
+
+        ndvi_traces = []
+        for year_col in df.columns[1:]:  # Skip first column (Obdobie)
+            trace = go.Scatter(
+                x=df['Obdobie'], 
+                y=df[year_col],
+                mode='lines+markers',
+                name=year_col,
+                opacity=0.7,
+                line=dict(width=2.5),
+                marker=dict(size=6)
+            )
+            ndvi_traces.append(trace)
+        
+        # Load temperature data
+        temp_df = pd.read_csv('static/temperature_comparison.csv')
+        
+        # Find first occurrence of 5 consecutive days above 5°C for each year
+        temp_threshold = 5
+        days_threshold = 5
+        threshold_dates = {}
+        
+        for year_col in temp_df.columns[1:]:  # Skip first column (date)
+            for i in range(len(temp_df) - days_threshold + 1):
+                # Check if 5 consecutive days are all >= 5°C
+                five_day_temps = temp_df[year_col].iloc[i:i + days_threshold]
+                if five_day_temps.min() >= temp_threshold:
+                    threshold_dates[year_col] = {
+                        'start_index': i,
+                        'end_index': i + days_threshold - 1,
+                        'start_date': temp_df['date'].iloc[i],
+                        'end_date': temp_df['date'].iloc[i + days_threshold - 1]
+                    }
+                    break
+        
+        temp_traces = []
+        for year_col in temp_df.columns[1:]:  # Skip first column (date)
+            trace = go.Scatter(
+                x=temp_df['date'], 
+                y=temp_df[year_col],
+                mode='lines+markers',
+                name=year_col,
+                opacity=0.7,
+                line=dict(width=2.5),
+                marker=dict(size=6)
+            )
+            temp_traces.append(trace)
+        
+        ndvi_json = json.dumps(ndvi_traces, cls=plotly.utils.PlotlyJSONEncoder)
+        temp_json = json.dumps(temp_traces, cls=plotly.utils.PlotlyJSONEncoder)
+        threshold_json = json.dumps(threshold_dates)
+        
+        return jsonify({
+            "ndvi_data": ndvi_json,
+            "temp_data": temp_json,
+            "threshold_dates": threshold_json
+        })
+    
+    except Exception as e:
+        app.logger.error(f"Error in /api/plot: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/analyze', methods=['POST'])
