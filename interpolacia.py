@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 def hodnota_v_bode_x(x, pole_x, pole_y, pct):
     s = 0
     for i in range(pct):
@@ -6,12 +7,18 @@ def hodnota_v_bode_x(x, pole_x, pole_y, pct):
         for j in range(pct):
             if i != j:
                 p*=(x - pole_x[j])/(pole_x[i] - pole_x[j])
-        p*=pole_y[i]
+        if pole_y[i] == 0:
+            if i-1 >= 0 and pole_y[i-1] != 0:
+                p *= pole_y[i-1]
+            elif i+1 < pct-1 and pole_y[i+1] != 0:
+                p *= pole_y[i+1]
+        else:
+            p *= pole_y[i]
         s += p
     return s
 
 import csv
-with open('static/csv/ndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv', newline="")as csvfile:
+with open('static/csv_raw_linear/ndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv', newline="")as csvfile:
     reader= csv.reader(csvfile)
     data = list(reader)
 print(data)
@@ -38,7 +45,7 @@ import csv
 
 header = ["Obdobie", "Rok 2020", "Rok 2021", "Rok 2022", "Rok 2023", "Rok 2024", "Rok 2025"]
 row_names = ["Feb 1-14", "Feb 15-28", "Mar 1-14", "Mar 15-31", "Apr 1-14", "Apr 15-30", "May 1-14", "May 15-31", "Jun 1-14", "Jun 15-30", "Jul 1-14", "Jul 15-31"]
-with open("vystup.csv", "w", newline="", encoding="utf-8") as f:
+with open("static/csv_interpol_lin/vystup.csv", "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
     writer.writerow(header)
 
@@ -48,3 +55,35 @@ with open("vystup.csv", "w", newline="", encoding="utf-8") as f:
             row.append(data_roky[rok][i])
         writer.writerow(row)
 
+#plot
+
+# x-ová os = 12 období
+x = np.arange(1, pocetx + 1)
+
+# názvy období (pre x-ticks)
+row_names = [
+    "Feb 1-14", "Feb 15-28",
+    "Mar 1-14", "Mar 15-31",
+    "Apr 1-14", "Apr 15-30",
+    "May 1-14", "May 15-31",
+    "Jun 1-14", "Jun 15-30",
+    "Jul 1-14", "Jul 15-31"
+]
+
+# názvy rokov
+roky = ["2020", "2021", "2022", "2023", "2024", "2025"]
+
+plt.figure(figsize=(14, 7))
+
+for i in range(pocetRokov):
+    plt.plot(x, data_roky[i], marker="o", label=roky[i])
+
+plt.xticks(x, row_names, rotation=45, ha="right")
+plt.xlabel("Obdobie")
+plt.ylabel("NDVI")
+plt.ylim(0, 1)
+plt.title("NDVI vývoj podľa rokov (interpolované hodnoty)")
+plt.grid(True, alpha=0.3)
+plt.legend()
+plt.tight_layout()
+plt.show()
