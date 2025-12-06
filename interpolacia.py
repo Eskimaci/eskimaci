@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
+
 def hodnota_v_bode_x(x, pole_x, pole_y, pct):
     s = 0
     for i in range(pct):
@@ -17,8 +19,7 @@ def hodnota_v_bode_x(x, pole_x, pole_y, pct):
         s += p
     return s
 
-import csv
-with open('static/csv_raw_linear/ndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv', newline="")as csvfile:
+with open('static/csv_raw_linear/nndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv', newline="")as csvfile:
     reader= csv.reader(csvfile)
     data = list(reader)
 print(data)
@@ -41,7 +42,6 @@ for i in range(pocetRokov):
             data_roky[i][j] = float(hodnota_v_bode_x(i, x_hodnoty ,data_roky[i] ,pocetRokov))
 print(data_roky)
 
-import csv
 
 header = ["Obdobie", "Rok 2020", "Rok 2021", "Rok 2022", "Rok 2023", "Rok 2024", "Rok 2025"]
 row_names = ["Feb 1-14", "Feb 15-28", "Mar 1-14", "Mar 15-31", "Apr 1-14", "Apr 15-30", "May 1-14", "May 15-31", "Jun 1-14", "Jun 15-30", "Jul 1-14", "Jul 15-31"]
