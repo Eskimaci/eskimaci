@@ -81,7 +81,27 @@ with open('static/geojson/bernolakovPark.geojson', 'r') as geojsonFile:
     geojsonData = json.load(geojsonFile)
     bernolakovPark = park("Bernolákov Park", geojsonData['features'][0]['geometry']['coordinates'][0])
 
-zelenePlochy = [parkJankaKrala, bernolakovPark]
+with open('static/geojson/ruzovyPark.geojson', 'r') as geojsonFile:
+    geojsonData = json.load(geojsonFile)
+    ruzovyPark = park("Ružový Park", geojsonData['features'][0]['geometry']['coordinates'][0])
+
+with open('static/geojson/strky.geojson' , 'r') as geojsonFile:
+    geojsonData = json.load(geojsonFile)
+    strky = park("Park Strky", geojsonData['features'][0]['geometry']['coordinates'][0])
+
+with open('static/geojson/kamenac.geojson' , 'r') as geojsonFile:
+    geojsonData = json.load(geojsonFile)
+    kamenac = park("Park Kamenný mlyn", geojsonData['features'][0]['geometry']['coordinates'][0])
+
+with open('static/geojson/parkZaDruzbou.geojson' , 'r') as geojsonFile:
+    geojsonData = json.load(geojsonFile)
+    parkZaDruzbou = park("Park Za družbou", geojsonData['features'][0]['geometry']['coordinates'][0])
+
+with open('static/geojson/zahradkarskaOblast.geojson' , 'r') as geojsonFile:
+    geojsonData = json.load(geojsonFile)
+    zahradkarskaOblast = park("Záhradkárska Oblasť", geojsonData['features'][0]['geometry']['coordinates'][0])
+
+zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast]
 # Výstupné parametre
 OUTPUT_SIZE = [1000, 1000]
 OUTPUT_FORMAT = MimeType.TIFF
@@ -143,10 +163,10 @@ def get_ndvi_for_period(year, month, config, geometry, size):
         ndvi_array = data[0]
         # Vypočítame priemernú hodnotu NDVI pre celú oblasť
         # filter out hodnoty >0,35
-        filtered_values = ndvi_array[(ndvi_array != 0) & (ndvi_array >= 0.35)]
+        filtered_values = ndvi_array[(ndvi_array != 0) & (ndvi_array >= 0.4)]
         
         if len(filtered_values) == 0:
-            print(f"Varovanie: Pre {year}-{month:02d} neboli nájdené žiadne hodnoty >= 0.35")
+            print(f"Varovanie: Pre {year}-{month:02d} neboli nájdené žiadne hodnoty >= 0.4")
             print(f"  Rozsah hodnôt v poli: {np.min(ndvi_array):.4f} až {np.max(ndvi_array):.4f}")
             print(f"  Počet nenulových hodnôt: {np.count_nonzero(ndvi_array)}")
             # Použijeme všetky nenulové hodnoty
@@ -170,12 +190,13 @@ def main():
     print("\n--- Vytváram graf priemernej NDVI ---")
     plt.figure(figsize=(12, 6))
     # Slovník na uloženie dát: {mesiac: [hodnoty pre všetky roky]}
+
     for park in zelenePlochy:
         aoi_geometry = Geometry(
             geometry={"type": "Polygon", "coordinates": [park.suradnice]},
             crs=CRS.WGS84
         )
-        print(f"\n--- Analyzujem park s {len(park.suradnice)} vrchol")
+        print(f"\n--- Analyzujem park: {park.nazov} ---")
         monthly_averages = {month: [] for month in MONTHS_TO_ANALYZE}
         
         # Stiahnutie dát pre každý rok a mesiac
@@ -207,8 +228,8 @@ def main():
         random_color = random.choice(colors)
         # Vytvoríme spojnicový graf (curve)
         plt.plot(month_labels, values, color=random_color, linewidth=2.5, marker='o', 
-                markersize=8, markerfacecolor='darkgreen', markeredgecolor='white', 
-                markeredgewidth=2, label=f'Priemerná NDVI v oblasti: {park.nazov}')
+                markersize=8, markerfacecolor=random_color, markeredgecolor='white', 
+                markeredgewidth=2, label=f'{park.nazov}')
         
         # Pridáme hodnoty pri každom bode
         for i, value in enumerate(values):
