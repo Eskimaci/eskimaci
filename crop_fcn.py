@@ -3,8 +3,7 @@ from rasterio.mask import mask
 import json
 import os
 
-
-geojson_path = "static/geojson/trnava.geojson" # Cesta k geojson file
+geojson_path = "static/geojson/trnava.geojson"  # Cesta k geojson file
 
 input_b2 = "static/SAFE/S2C_MSIL2A_20250625T095051_N0511_R079_T33UXP_20250625T152820.SAFE/GRANULE/L2A_T33UXP_A004196_20250625T095707/IMG_DATA/R10m/T33UXP_20250625T095051_B02_10m.jp2"
 input_b3 = "static/SAFE/S2C_MSIL2A_20250625T095051_N0511_R079_T33UXP_20250625T152820.SAFE/GRANULE/L2A_T33UXP_A004196_20250625T095707/IMG_DATA/R10m/T33UXP_20250625T095051_B03_10m.jp2"
@@ -35,6 +34,7 @@ def crop_raster(input, output, shapes):
         with rasterio.open(output, "w", **out_meta) as dest:
             dest.write(out_image)
     print(f"Hotovo! Ulozene ako: {output}")
+
 
 # ---- SPUSTENIE ----
 

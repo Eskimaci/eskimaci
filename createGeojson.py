@@ -1,6 +1,7 @@
 import json
 import sys
 
+
 def main(nazovSuboru='output', longLat=True):
     suradnizeInput = input('vloz suradnice:')
     suradnizeInput = suradnizeInput.replace(' ', ',')
@@ -27,7 +28,7 @@ def main(nazovSuboru='output', longLat=True):
                     "coordinates": [suradnice]
                 }
             }
-        ]    
+        ]
     }
     with open(f'static/geojson/{nazovSuboru}.geojson', 'w') as geojsonFile:
         json.dump(suradniceGeoJson, geojsonFile, indent=4)
@@ -39,7 +40,8 @@ if __name__ == '__main__':
         main()
         sys.exit()
     if argv[1] == '--help':
-        print('Pouzitie: python createGeojson.py nazovSuboru --longlat alebo --latlong \n--longlat: zadavat suradnice v poradi dlzka, sirka\n--latlong: zadavat suradnice v poradi sirka, dlzka')
+        print(
+            'Pouzitie: python createGeojson.py nazovSuboru --longlat alebo --latlong \n--longlat: zadavat suradnice v poradi dlzka, sirka\n--latlong: zadavat suradnice v poradi sirka, dlzka')
         sys.exit()
     if argv[1] != '--help' and len(argv) == 2:
         main(argv[1], longLat=True)

@@ -14,7 +14,6 @@ output_b3 = "static/cropped/trnava_b3.tif"
 output_b4 = "static/cropped/trnava_b4.tif"
 output_8 = "static/cropped/trnava_b8.tif"
 
-
 with rasterio.open(input_b4) as red_src:
     red = red_src.read(1).astype('float32')
 
@@ -28,7 +27,7 @@ np.seterr(divide='ignore', invalid='ignore')
 ndvi = (nir - red) / (nir + red)
 
 # vizualizacia
-plt.figure(figsize=(10,10))
+plt.figure(figsize=(10, 10))
 
 # Colormap
 plt.imshow(ndvi, cmap='RdYlGn', vmin=-1, vmax=1)
