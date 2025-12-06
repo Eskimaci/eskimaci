@@ -48,7 +48,7 @@ years = range(2020, 2026)
 data = []
 for year in years:
     df = daily_dataframe[(daily_dataframe['date'] >= pd.Timestamp(str(year) + '-01-15', tz='UTC')) & (
-            daily_dataframe['date'] <= pd.Timestamp(str(year) + '-07-31', tz='UTC'))]
+            daily_dataframe['date'] <= pd.Timestamp(str(year) + '-07-31', tz='UTC'))].copy()
     data.append(df)
 
 temp_threshold = 5
@@ -164,5 +164,16 @@ ax.grid(True, linestyle='--', alpha=0.5)
 
 ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
 fig.autofmt_xdate()
+
+# Create a pivot table format - find the minimum length across all years
+min_length = min(len(data[i]) for i in range(len(years)))
+
+combined_df = pd.DataFrame()
+combined_df['date'] = data[0]['date'].iloc[:min_length].reset_index(drop=True)
+
+for i, year in enumerate(years):
+    combined_df[f'Rok {year}'] = data[i]['temperature_2m_mean'].iloc[:min_length].reset_index(drop=True)
+
+combined_df.to_csv('temperature_comparison.csv', index=False)
 
 plt.show()

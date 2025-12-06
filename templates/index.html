@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Peľová Analýza Vegetácie v Trnave</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
         :root {
             --bg: #05060a;
@@ -437,12 +438,6 @@
 
                 <div class="hero-controls">
                     <div class="control-group">
-                        <label for="year-select">Vyberte rok</label>
-                        <div id="year-checkbox-container" class="year-checkbox-group">
-                            <!-- Checkboxy rokov budú dynamicky vložené cez JS -->
-                        </div>
-                    </div>
-                    <div class="control-group">
                         <label for="location-select">Nástup peľovej sezóny</label>
                         <div class="control-input">
                             <select id="location-select">
@@ -459,7 +454,7 @@
                     </div>
                     <div class="control-group button-group">
                         <label>&nbsp;</label>
-                        <button class="primary" id="analyze-btn">Zobraziť vývoj peľovej sezóny</button>
+                        <button class="primary analyze-polen" id="analyze-polen-btn">Zobraziť vývoj peľovej sezóny</button>
                     </div>
                 </div>
                 <section id="results" class="results-section">
@@ -468,36 +463,56 @@
     }
 
         const content = document.querySelector('.content-div');
-        loadVegetaciu(content);     
         
-        const vegBtn = document.querySelector('.load-veg-btn');
-        vegBtn.addEventListener('click', () => {
-            loadVegetaciu(content);
-            const yearContainer = document.getElementById('year-checkbox-container');
-            populateYearCheckboxes(yearContainer);
-        });    
-        
-        const pollenBtn = document.querySelector('.load-pollen-btn');
-        pollenBtn.addEventListener('click', () => {
-            loadPollenSeason(content);
-            const yearContainer = document.getElementById('year-checkbox-container');
-            populatePollenYearCheckboxes(yearContainer);
-        });
-
-        const yearContainer = document.getElementById('year-checkbox-container');
-        const analyzeBtn = document.getElementById('analyze-btn');
-        const seasonSelect = document.getElementById('season-select');
-        const locationSelect = document.getElementById('location-select');
-        const resultsSection = document.getElementById('results');
-        const seasonInfo = document.getElementById('season-info');
-        populateYearCheckboxes(yearContainer);
-
+        // Define pollenInfo at the top before any functions use it
         const pollenInfo = {
             early_spring: "Hlavné alergény: Lieska, Jelša, Tis.",
             mid_spring: "Hlavné alergény: Javor, Jaseň, Bresty.",
             late_spring: "Hlavné alergény: Pagaštan, Lipa, trávy.",
             year: "Analýza pre celý kalendárny rok."
         };
+        
+        // Load vegetation analysis by default on page load
+        loadVegetaciu(content);
+        let yearContainer = document.getElementById('year-checkbox-container');
+        populateYearCheckboxes(yearContainer);
+        
+        // Attach event listeners for initial load
+        attachVegetationListeners();
+        
+        const vegBtn = document.querySelector('.load-veg-btn');
+        vegBtn.addEventListener('click', () => {
+            loadVegetaciu(content);
+            yearContainer = document.getElementById('year-checkbox-container');
+            populateYearCheckboxes(yearContainer);
+            attachVegetationListeners();
+        });    
+        
+        const pollenBtn = document.querySelector('.load-pollen-btn');
+        pollenBtn.addEventListener('click', () => {
+            loadPollenSeason(content);
+            attachPollenListeners();
+        });
+        
+        function attachVegetationListeners() {
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const seasonSelect = document.getElementById('season-select');
+            
+            if (analyzeBtn) {
+                analyzeBtn.addEventListener('click', handleAnalysis);
+            }
+            if (seasonSelect) {
+                seasonSelect.addEventListener('change', updateSeasonInfo);
+                updateSeasonInfo();
+            }
+        }
+        
+        function attachPollenListeners() {
+            const analyzePolenBtn = document.getElementById('analyze-polen-btn');
+            if (analyzePolenBtn) {
+                analyzePolenBtn.addEventListener('click', handlePollenAnalysis);
+            }
+        }
 
         // Populácia rokov ako checkboxy
     function populateYearCheckboxes(yearContainer) {
@@ -521,56 +536,239 @@
             yearContainer.appendChild(div);
         }
     }
-
-    function populatePollenYearCheckboxes(yearContainer) {
-        const currentYear = new Date().getFullYear();
-        for (let year = currentYear; year >= 2020; year--) {
-            const div = document.createElement('div');
-            div.className = 'year-checkbox';
-            const input = document.createElement('input');
-            input.type = 'checkbox';
-            input.id = `year-${year}`;
-            input.value = year;
-            // Predvolene vyberieme aktuálny rok
-            if (year === currentYear) {
-                input.checked = true;
-            }
-            // Allow only one year to be selected
-            input.addEventListener('change', function() {
-                if (this.checked) {
-                    yearContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                        if (cb !== this) cb.checked = false;
-                    });
-                }
-            });
-            const label = document.createElement('label');
-            label.htmlFor = `year-${year}`;
-            label.textContent = year;
-            div.appendChild(input);
-            div.appendChild(label);
-            yearContainer.appendChild(div);
-        }
-    }
         
         function updateSeasonInfo() {
-            const selectedSeason = seasonSelect.value;
-            seasonInfo.textContent = pollenInfo[selectedSeason] || "";
+            const seasonSelect = document.getElementById('season-select');
+            const seasonInfo = document.getElementById('season-info');
+            if (seasonSelect && seasonInfo) {
+                const selectedSeason = seasonSelect.value;
+                seasonInfo.textContent = pollenInfo[selectedSeason] || "";
+            }
         }
 
         async function handlePollenAnalysis() {
-            const selectedYears = Array.from(yearContainer.querySelectorAll('input[type="checkbox"]:checked'))
-                                     .map(cb => cb.value);
+
+            const locationSelect = document.getElementById('location-select');
+            const resultsSection = document.getElementById('results');
+            const analyzePolenBtn = document.getElementById('analyze-polen-btn');
+
             const selectedLocation = locationSelect.value;
 
-            if (selectedYears.length === 0) {
-                showError("Vyberte prosím rok pre analýzu.");
-                return;
+            showLoading();
+            if (analyzePolenBtn) {
+                analyzePolenBtn.disabled = true;
+                analyzePolenBtn.textContent = 'Načítavam...';
             }
 
+            try {
+                const response = await fetch('/api/plot', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        location: selectedLocation,
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                }
+                
+                // Parse the plot data and render it
+                const ndviData = JSON.parse(data.ndvi_data);
+                const tempData = JSON.parse(data.temp_data);
+                renderPlots(ndviData, tempData);
+                
+            } catch (error) {
+                console.error('Plot error:', error);
+                showError(`Chyba pri generovaní grafu: ${error.message}`);
+            } finally {
+                if (analyzePolenBtn) {
+                    analyzePolenBtn.disabled = false;
+                    analyzePolenBtn.textContent = 'Zobraziť vývoj peľovej sezóny';
+                }
+            }
+        }
+        
+        function renderPlots(ndviGraphs, tempGraphs) {
+            const resultsSection = document.getElementById('results');
+            if (!resultsSection) return;
             
+            // Create containers for both plots
+            resultsSection.innerHTML = `
+                <div id="ndvi-chart-container" style="width: 100%; height: 500px; margin-bottom: 30px;"></div>
+                <div id="temp-chart-container" style="width: 100%; height: 500px;"></div>
+            `;
+            
+            // Track which lines are highlighted (shared between both plots)
+            let highlightedLines = new Set();
+            
+            // NDVI Plot Layout
+            const ndviLayout = {
+                title: 'NDVI - Porovnanie rokov (kliknite na legendu alebo čiaru pre zvýraznenie)',
+                xaxis: { 
+                    title: 'Obdobie', 
+                    type: 'category',
+                    tickangle: -45,
+                    nticks: 10
+                },
+                yaxis: { 
+                    title: 'NDVI',
+                    range: [0, 1]
+                },
+                hovermode: 'closest',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                legend: {
+                    orientation: 'v',
+                    x: 1.02,
+                    y: 1
+                }
+            };
+            
+            // Temperature Plot Layout
+            const tempLayout = {
+                title: 'Teplota - Porovnanie rokov (kliknite na legendu alebo čiaru pre zvýraznenie)',
+                xaxis: { 
+                    title: 'Dátum', 
+                    type: 'category',
+                    tickangle: -45,
+                    nticks: 15
+                },
+                yaxis: { 
+                    title: 'Teplota (°C)',
+                    range: [0, null]
+                },
+                hovermode: 'closest',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#e5e7eb' },
+                legend: {
+                    orientation: 'v',
+                    x: 1.02,
+                    y: 1
+                }
+            };
+
+            // Draw both plots
+            Plotly.newPlot('ndvi-chart-container', ndviGraphs, ndviLayout);
+            Plotly.newPlot('temp-chart-container', tempGraphs, tempLayout);
+
+            const ndviPlot = document.getElementById('ndvi-chart-container');
+            const tempPlot = document.getElementById('temp-chart-container');
+            
+            // Function to toggle highlight on both plots
+            function toggleHighlight(curveNumber) {
+                // Toggle the line
+                if (highlightedLines.has(curveNumber)) {
+                    highlightedLines.delete(curveNumber);
+                } else {
+                    highlightedLines.add(curveNumber);
+                }
+                
+                updateBothPlots();
+            }
+            
+            function updateBothPlots() {
+                const ndviOpacities = [];
+                const ndviWidths = [];
+                const tempOpacities = [];
+                const tempWidths = [];
+
+                for(let i=0; i < ndviGraphs.length; i++){
+                    if (highlightedLines.has(i)) {
+                        // Highlighted lines
+                        ndviOpacities.push(1.0);
+                        ndviWidths.push(5);
+                        tempOpacities.push(1.0);
+                        tempWidths.push(5);
+                    } else if (highlightedLines.size > 0) {
+                        // Non-highlighted lines when at least one is highlighted
+                        ndviOpacities.push(0.7);
+                        ndviWidths.push(2.5);
+                        tempOpacities.push(0.15);
+                        tempWidths.push(1.5);
+                    } else {
+                        // Default state when nothing is highlighted
+                        ndviOpacities.push(0.7);
+                        ndviWidths.push(2.5);
+                        tempOpacities.push(0.7);
+                        tempWidths.push(2.5);
+                    }
+                }
+
+                // Update both plots with different opacity values
+                Plotly.restyle('ndvi-chart-container', {
+                    'opacity': ndviOpacities, 
+                    'line.width': ndviWidths
+                });
+                
+                Plotly.restyle('temp-chart-container', {
+                    'opacity': tempOpacities, 
+                    'line.width': tempWidths
+                });
+            }
+
+            // NDVI plot event handlers
+            ndviPlot.on('plotly_click', function(data){
+                const curveNumber = data.points[0].curveNumber;
+                toggleHighlight(curveNumber);
+            });
+            
+            ndviPlot.on('plotly_legendclick', function(data){
+                const curveNumber = data.curveNumber;
+                toggleHighlight(curveNumber);
+                return false;
+            });
+            
+            // Temperature plot event handlers
+            tempPlot.on('plotly_click', function(data){
+                const curveNumber = data.points[0].curveNumber;
+                toggleHighlight(curveNumber);
+            });
+            
+            tempPlot.on('plotly_legendclick', function(data){
+                const curveNumber = data.curveNumber;
+                toggleHighlight(curveNumber);
+                return false;
+            });
+            
+            // Double click to reset both plots
+            ndviPlot.on('plotly_doubleclick', function(){
+                highlightedLines.clear();
+                const resetOpacities = Array(ndviGraphs.length).fill(0.7);
+                const resetWidths = Array(ndviGraphs.length).fill(2.5);
+                Plotly.restyle('ndvi-chart-container', {
+                    'opacity': resetOpacities, 
+                    'line.width': resetWidths
+                });
+                Plotly.restyle('temp-chart-container', {
+                    'opacity': resetOpacities, 
+                    'line.width': resetWidths
+                });
+            });
+            
+            tempPlot.on('plotly_doubleclick', function(){
+                highlightedLines.clear();
+                const resetOpacities = Array(tempGraphs.length).fill(0.7);
+                const resetWidths = Array(tempGraphs.length).fill(2.5);
+                Plotly.restyle('ndvi-chart-container', {
+                    'opacity': resetOpacities, 
+                    'line.width': resetWidths
+                });
+                Plotly.restyle('temp-chart-container', {
+                    'opacity': resetOpacities, 
+                    'line.width': resetWidths
+                });
+            });
         }
 
         async function handleAnalysis() {
+            const yearContainer = document.getElementById('year-checkbox-container');
+            const seasonSelect = document.getElementById('season-select');
+            const resultsSection = document.getElementById('results');
+            const analyzeBtn = document.getElementById('analyze-btn');
+            
             const selectedYears = Array.from(yearContainer.querySelectorAll('input[type="checkbox"]:checked'))
                     .map(cb => cb.value);
             const selectedSeason = seasonSelect.value;
@@ -608,23 +806,26 @@
         }
 
         function showLoading() {
-            resultsSection.innerHTML = '<div class="spinner"></div><p class="placeholder-text" style="margin-top: 10px;">Prebieha analýza, môže to trvať aj viac ako minútu...</p>';
+            const resultsSection = document.getElementById('results');
+            if (resultsSection) {
+                resultsSection.innerHTML = '<div class="spinner"></div><p class="placeholder-text" style="margin-top: 10px;">Prebieha analýza, môže to trvať aj viac ako minútu...</p>';
+            }
         }
 
         function showImage(imageUrl) {
-            const url = `${imageUrl}?t=${new Date().getTime()}`;
-            resultsSection.innerHTML = `<img src="${url}" alt="Mapa trendu vegetácie">`;
+            const resultsSection = document.getElementById('results');
+            if (resultsSection) {
+                const url = `${imageUrl}?t=${new Date().getTime()}`;
+                resultsSection.innerHTML = `<img src="${url}" alt="Mapa trendu vegetácie">`;
+            }
         }
 
         function showError(message) {
-            resultsSection.innerHTML = `<div class="error-message">${message}</div>`;
+            const resultsSection = document.getElementById('results');
+            if (resultsSection) {
+                resultsSection.innerHTML = `<div class="error-message">${message}</div>`;
+            }
         }
-
-        analyzeBtn.addEventListener('click', handleAnalysis);
-        seasonSelect.addEventListener('change', updateSeasonInfo);
-
-        // Initial call
-        updateSeasonInfo();
 </script>
 </body>
 </html>
