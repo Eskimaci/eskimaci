@@ -3,6 +3,12 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from long_term_analysis_trnava import generate_trend_map
 import logging
 import os
+import plotly.graph_objs as go
+import plotly.utils
+import json
+import pandas as pd
+import io
+
 
 # --- 1. NASTAVENIE APLIKÁCIE ---
 app = Flask(__name__, static_folder='static')
@@ -29,6 +35,10 @@ def index():
 def send_static(path):
     """Servíruje statické súbory (ako CSS, JS, a vygenerované obrázky)."""
     return send_from_directory('static', path)
+
+
+@app.route('/api/plot', methods=['GET'])
+def plot():
 
 
 @app.route('/api/analyze', methods=['POST'])

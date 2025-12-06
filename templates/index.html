@@ -128,6 +128,9 @@
         .card-header { margin-bottom: 10px; }
         .card-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--muted); }
         .card-body p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+        .button-flexbox {
+            display: flex; gap: 12px; margin-bottom: 16px;
+        }
     </style>
 </head>
 <body>
@@ -152,40 +155,16 @@
                 <div class="hero-highlight-dot"></div>
                 <span>Trnava · Analýza peľových sezón</span>
             </div>
-            <h1 class="hero-title">Ako sa mení vegetácia počas peľových sezón?</h1>
-            <p class="hero-subtitle">
-                Zvoľte si roky a peľovú sezónu pre analýzu. Nástroj vyhodnotí zeleň (NDVI) v danom období a porovná jej vývoj naprieč rokmi, čo môže pomôcť identifikovať zmeny v intenzite peľových alergénov.
-            </p>
-
-            <div class="hero-controls">
-                <div class="control-group">
-                    <label for="year-select">Vyberte roky (aspoň dva)</label>
-                    <div id="year-checkbox-container" class="year-checkbox-group">
-                        <!-- Checkboxy rokov budú dynamicky vložené cez JS -->
-                    </div>
-                </div>
-                <div class="control-group">
-                    <label for="season-select">Peľová sezóna</label>
-                    <div class="control-input">
-                        <select id="season-select">
-                            <option value="early_spring">Skorá jar (Feb-Mar)</option>
-                            <option value="mid_spring">Stredná jar (Apr-Máj)</option>
-                            <option value="late_spring" selected>Neskorá jar / Leto (Jún-Aug)</option>
-                            <option value="year">Celý rok</option>
-                        </select>
-                    </div>
-                    <div id="season-info"></div>
-                </div>
-                <div class="control-group button-group">
-                    <label>&nbsp;</label>
-                    <button class="primary" id="analyze-btn">Analyzovať trend</button>
-                </div>
+            <div class="button-flexbox">
+                <button class="primary load-veg-btn">Zmena vegetácia</button>
+                <button class="primary load-pollen-btn">Nástup peľovej sezóny</button>
+            </div>
+            <div class="content-div">
+                
             </div>
         </section>
 
-        <section id="results" class="results-section">
-            <div class="placeholder-text">Výsledná mapa trendu sa zobrazí tu.</div>
-        </section>
+        
         
         <article class="card">
             <div class="card-header">
@@ -204,12 +183,106 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    function loadVegetaciu(contentDiv) {
+        contentDiv.innerHTML = `
+        <h1 class="hero-title">Ako sa mení vegetácia počas peľových sezón?</h1>
+                <p class="hero-subtitle">
+                    Zvoľte si roky a peľovú sezónu pre analýzu. Nástroj vyhodnotí zeleň (NDVI) v danom období a porovná jej vývoj naprieč rokmi, čo môže pomôcť identifikovať zmeny v intenzite peľových alergénov.
+                </p>
+
+                <div class="hero-controls">
+                    <div class="control-group">
+                        <label for="year-select">Vyberte roky (aspoň dva)</label>
+                        <div id="year-checkbox-container" class="year-checkbox-group">
+                            <!-- Checkboxy rokov budú dynamicky vložené cez JS -->
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="season-select">Peľová sezóna</label>
+                        <div class="control-input">
+                            <select id="season-select">
+                                <option value="early_spring">Skorá jar (Feb-Mar)</option>
+                                <option value="mid_spring">Stredná jar (Apr-Máj)</option>
+                                <option value="late_spring" selected>Neskorá jar / Leto (Jún-Aug)</option>
+                                <option value="year">Celý rok</option>
+                            </select>
+                        </div>
+                        <div id="season-info"></div>
+                    </div>
+                    <div class="control-group button-group">
+                        <label>&nbsp;</label>
+                        <button class="primary" id="analyze-btn">Analyzovať trend</button>
+                    </div>
+                </div>
+                <section id="results" class="results-section">
+                    <div class="placeholder-text">Výsledná mapa trendu sa zobrazí tu.</div>
+                </section>
+        `;
+    }
+
+    function loadPollenSeason(contentDiv) {
+        contentDiv.innerHTML = `
+               <h1 class="hero-title">Nástup peľovej sezóny</h1>
+                <p class="hero-subtitle">
+                    Analyzujte zmeny vegetácie počas peľových sezón v Trnave v rôznych oblastiach. Vyberte roky, aby ste zistili, ako sa mení množstvo zelene, čo môže indikovať intenzitu peľových alergénov.
+                </p>
+
+                <div class="hero-controls">
+                    <div class="control-group">
+                        <label for="year-select">Vyberte rok</label>
+                        <div id="year-checkbox-container" class="year-checkbox-group">
+                            <!-- Checkboxy rokov budú dynamicky vložené cez JS -->
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label for="location-select">Nástup peľovej sezóny</label>
+                        <div class="control-input">
+                            <select id="location-select">
+                                <option value="janka-krala">Park Janka Kráľa</option>
+                                <option value="nemocnicny">Nemocničný park</option>
+                                <option value="strky" selected>Štrky</option>
+                                <option value="druzba">Park za družbou</option>
+                                <option value="zahradkarska">Záhradkárska oblasť</option>
+                                <option value="kamenac">Kamenáč</option>
+                                <option value="rybniky">Rybníky</option>
+                                </select>
+                        </div>
+                        <div id="season-info"></div>
+                    </div>
+                    <div class="control-group button-group">
+                        <label>&nbsp;</label>
+                        <button class="primary" id="analyze-btn">Zobraziť vývoj peľovej sezóny</button>
+                    </div>
+                </div>
+                <section id="results" class="results-section">
+                    <div class="placeholder-text">Výsledná mapa trendu sa zobrazí tu.</div>
+                </section>`;
+    }
+
+        const content = document.querySelector('.content-div');
+        loadVegetaciu(content);     
+        
+        const vegBtn = document.querySelector('.load-veg-btn');
+        vegBtn.addEventListener('click', () => {
+            loadVegetaciu(content);
+            const yearContainer = document.getElementById('year-checkbox-container');
+            populateYearCheckboxes(yearContainer);
+        });    
+        
+        const pollenBtn = document.querySelector('.load-pollen-btn');
+        pollenBtn.addEventListener('click', () => {
+            loadPollenSeason(content);
+            const yearContainer = document.getElementById('year-checkbox-container');
+            populatePollenYearCheckboxes(yearContainer);
+        });
+
         const yearContainer = document.getElementById('year-checkbox-container');
         const analyzeBtn = document.getElementById('analyze-btn');
         const seasonSelect = document.getElementById('season-select');
+        const locationSelect = document.getElementById('location-select');
         const resultsSection = document.getElementById('results');
         const seasonInfo = document.getElementById('season-info');
+        populateYearCheckboxes(yearContainer);
 
         const pollenInfo = {
             early_spring: "Hlavné alergény: Lieska, Jelša, Tis.",
@@ -219,6 +292,7 @@
         };
 
         // Populácia rokov ako checkboxy
+    function populateYearCheckboxes(yearContainer) {
         const currentYear = new Date().getFullYear();
         for (let year = currentYear; year >= 2017; year--) {
             const div = document.createElement('div');
@@ -238,10 +312,54 @@
             div.appendChild(label);
             yearContainer.appendChild(div);
         }
+    }
+
+    function populatePollenYearCheckboxes(yearContainer) {
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year >= 2020; year--) {
+            const div = document.createElement('div');
+            div.className = 'year-checkbox';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = `year-${year}`;
+            input.value = year;
+            // Predvolene vyberieme aktuálny rok
+            if (year === currentYear) {
+                input.checked = true;
+            }
+            // Allow only one year to be selected
+            input.addEventListener('change', function() {
+                if (this.checked) {
+                    yearContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        if (cb !== this) cb.checked = false;
+                    });
+                }
+            });
+            const label = document.createElement('label');
+            label.htmlFor = `year-${year}`;
+            label.textContent = year;
+            div.appendChild(input);
+            div.appendChild(label);
+            yearContainer.appendChild(div);
+        }
+    }
         
         function updateSeasonInfo() {
             const selectedSeason = seasonSelect.value;
             seasonInfo.textContent = pollenInfo[selectedSeason] || "";
+        }
+
+        async function handlePollenAnalysis() {
+            const selectedYears = Array.from(yearContainer.querySelectorAll('input[type="checkbox"]:checked'))
+                                     .map(cb => cb.value);
+            const selectedLocation = locationSelect.value;
+
+            if (selectedYears.length === 0) {
+                showError("Vyberte prosím rok pre analýzu.");
+                return;
+            }
+
+            
         }
 
         async function handleAnalysis() {
@@ -299,7 +417,6 @@
         
         // Initial call
         updateSeasonInfo();
-    });
 </script>
 </body>
 </html>
