@@ -25,6 +25,9 @@ from sentinelhub import (
 )
 import json
 import random
+import os
+from PIL import Image
+import csv
 
 class park:
     def __init__(self, nazov, suradnice):
@@ -48,8 +51,23 @@ sh_config.sh_client_secret = CLIENT_SECRET
 
 # Definovanie časového rozsahu analýzy
 YEARS_TO_ANALYZE = [2020, 2021, 2022, 2023, 2024, 2025]
-MONTHS_TO_ANALYZE = [2, 3, 4, 5, 6, 7]  # Február až Júl
-MONTH_NAMES = ['Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl']
+
+# Definovanie 2-týždňových období (február až júl)
+# Formát: (mesiac_začiatok, deň_začiatok, mesiac_koniec, deň_koniec, názov)
+BI_WEEKLY_PERIODS = [
+    (2, 1, 2, 14, 'Feb 1-14'),
+    (2, 15, 2, 28, 'Feb 15-28'),
+    (3, 1, 3, 14, 'Mar 1-14'),
+    (3, 15, 3, 31, 'Mar 15-31'),
+    (4, 1, 4, 14, 'Apr 1-14'),
+    (4, 15, 4, 30, 'Apr 15-30'),
+    (5, 1, 5, 14, 'May 1-14'),
+    (5, 15, 5, 31, 'May 15-31'),
+    (6, 1, 6, 14, 'Jun 1-14'),
+    (6, 15, 6, 30, 'Jun 15-30'),
+    (7, 1, 7, 14, 'Jul 1-14'),
+    (7, 15, 7, 31, 'Jul 15-31'),
+]
 
 # Definovanie oblasti záujmu (AOI) - park Janka Kráľa v Trnave
 POLYGON_COORDINATES = [
@@ -101,7 +119,11 @@ with open('static/geojson/zahradkarskaOblast.geojson' , 'r') as geojsonFile:
     geojsonData = json.load(geojsonFile)
     zahradkarskaOblast = park("Záhradkárska Oblasť", geojsonData['features'][0]['geometry']['coordinates'][0])
 
-zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast]
+with open('static/geojson/nemocnicnyPark.geojson' , 'r') as geojsonFile:
+    geojsonData = json.load(geojsonFile)
+    nemocnicnyPark = park("Nemocnicny Park", geojsonData['features'][0]['geometry']['coordinates'][0])
+
+zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast, nemocnicnyPark]
 # Výstupné parametre
 OUTPUT_SIZE = [1000, 1000]
 OUTPUT_FORMAT = MimeType.TIFF
@@ -122,22 +144,86 @@ function evaluatePixel(sample) {
 }
 """
 
+# Evalscript pre true color RGB obrázok
+EVALSCRIPT_TRUE_COLOR = """
+//VERSION=3
+function setup() {
+  return {
+    input: [{ bands: ["B02", "B03", "B04"] }],
+    output: { bands: 3, sampleType: "AUTO" }
+  };
+}
+function evaluatePixel(sample) {
+  return [2.5 * sample.B04, 2.5 * sample.B03, 2.5 * sample.B02];
+}
+"""
+
 # --- 2. FUNKCIE PRE ANALÝZU ---
 
-def get_ndvi_for_period(year, month, config, geometry, size):
-    """Stiahne NDVI dáta pre zadaný rok a mesiac."""
-    print(f"Sťahujem dáta pre {year}-{month:02d}...")
+def save_satellite_image(year, start_month, start_day, end_month, end_day, period_name, config, geometry, size, park_name):
+    """Stiahne a uloží RGB satelitný snímok s viditeľnými oblakmi."""
+    print(f"Sťahujem RGB snímok pre {year} {period_name}...")
     
-    # Určíme prvý a posledný deň mesiaca
-    if month == 2:
-        # Február - kontrola na priestupný rok
-        last_day = 29 if (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)) else 28
-    elif month in [4, 6]:
-        last_day = 30
-    else:
-        last_day = 31
+    # Upravíme konečný deň pre priestupné roky
+    if end_month == 2 and end_day == 28:
+        if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
+            end_day = 29
     
-    time_interval = (f'{year}-{month:02d}-01', f'{year}-{month:02d}-{last_day}')
+    time_interval = (f'{year}-{start_month:02d}-{start_day:02d}', f'{year}-{end_month:02d}-{end_day:02d}')
+    
+    request = SentinelHubRequest(
+        evalscript=EVALSCRIPT_TRUE_COLOR,
+        input_data=[
+            SentinelHubRequest.input_data(
+                data_collection=DataCollection.SENTINEL2_L2A,
+                time_interval=time_interval,
+                mosaicking_order=MosaickingOrder.LEAST_CC,
+            )
+        ],
+        responses=[
+            SentinelHubRequest.output_response('default', MimeType.PNG)
+        ],
+        geometry=geometry,
+        size=size,
+        config=config
+    )
+    
+    try:
+        data = request.get_data(save_data=False)
+        if not data:
+            print(f"Varovanie: Pre {year}-{month:02d} neboli vrátené žiadne RGB dáta.")
+            return False
+        
+        # Vytvoríme výstupný adresár ak neexistuje
+        output_dir = 'static/output/satelite'
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Uložíme obrázok
+        rgb_image = data[0]
+        safe_park_name = park_name.replace(' ', '_').replace('á', 'a').replace('ô', 'o').replace('ý', 'y').replace('ž', 'z')
+        safe_period_name = period_name.replace(' ', '_').replace('-', '_')
+        filename = f"{output_dir}/{safe_park_name}_{year}_{safe_period_name}.png"
+        
+        # Konvertujeme numpy array na PIL Image a uložíme
+        img = Image.fromarray(rgb_image)
+        img.save(filename)
+        
+        print(f"✅ RGB snímok uložený: {filename}")
+        return True
+    except Exception as e:
+        print(f"Chyba pri sťahovaní RGB snímku za {year}-{month:02d}: {e}")
+        return False
+
+def get_ndvi_for_period(year, start_month, start_day, end_month, end_day, period_name, config, geometry, size):
+    """Stiahne NDVI dáta pre zadané 2-týždňové obdobie."""
+    print(f"Sťahujem dáta pre {year} {period_name}...")
+    
+    # Upravíme konečný deň pre priestupné roky
+    if end_month == 2 and end_day == 28:
+        if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0):
+            end_day = 29
+    
+    time_interval = (f'{year}-{start_month:02d}-{start_day:02d}', f'{year}-{end_month:02d}-{end_day:02d}')
     
     request = SentinelHubRequest(
             evalscript=EVALSCRIPT_NDVI,
@@ -158,7 +244,7 @@ def get_ndvi_for_period(year, month, config, geometry, size):
     try:
         data = request.get_data(save_data=False)
         if not data:
-            print(f"Varovanie: Pre {year}-{month:02d} neboli vrátené žiadne dáta.")
+            print(f"Varovanie: Pre {year} {period_name} neboli vrátené žiadne dáta.")
             return None
         ndvi_array = data[0]
         # Vypočítame priemernú hodnotu NDVI pre celú oblasť
@@ -166,7 +252,7 @@ def get_ndvi_for_period(year, month, config, geometry, size):
         filtered_values = ndvi_array[(ndvi_array != 0) & (ndvi_array >= 0.4)]
         
         if len(filtered_values) == 0:
-            print(f"Varovanie: Pre {year}-{month:02d} neboli nájdené žiadne hodnoty >= 0.4")
+            print(f"Varovanie: Pre {year} {period_name} neboli nájdené žiadne hodnoty >= 0.4")
             print(f"  Rozsah hodnôt v poli: {np.min(ndvi_array):.4f} až {np.max(ndvi_array):.4f}")
             print(f"  Počet nenulových hodnôt: {np.count_nonzero(ndvi_array)}")
             # Použijeme všetky nenulové hodnoty
@@ -175,10 +261,10 @@ def get_ndvi_for_period(year, month, config, geometry, size):
                 return None
         
         mean_ndvi = np.mean(filtered_values)
-        print(f"DEBUG [{year}-{month:02d}]: Priemerná NDVI: {mean_ndvi:.4f} (z {len(filtered_values)} pixelov)")
+        print(f"DEBUG [{year} {period_name}]: Priemerná NDVI: {mean_ndvi:.4f} (z {len(filtered_values)} pixelov)")
         return mean_ndvi
     except Exception as e:
-        print(f"Chyba pri sťahovaní dát za {year}-{month:02d}: {e}")
+        print(f"Chyba pri sťahovaní dát za {year} {period_name}: {e}")
         return None
 
 # --- 3. HLAVNÝ PROCES SPRACOVANIA ---
@@ -186,70 +272,106 @@ def get_ndvi_for_period(year, month, config, geometry, size):
 def main():
     """Hlavná funkcia, ktorá orchesteruje celý proces analýzy."""
     print("--- Spúšťam dlhodobú analýzu priemernej NDVI ---")
-            # Vytvorenie grafu
+    
+    # Vytvorenie grafu
     print("\n--- Vytváram graf priemernej NDVI ---")
-    plt.figure(figsize=(12, 6))
-    # Slovník na uloženie dát: {mesiac: [hodnoty pre všetky roky]}
-
-    for park in zelenePlochy:
-        aoi_geometry = Geometry(
-            geometry={"type": "Polygon", "coordinates": [park.suradnice]},
-            crs=CRS.WGS84
-        )
-        print(f"\n--- Analyzujem park: {park.nazov} ---")
-        monthly_averages = {month: [] for month in MONTHS_TO_ANALYZE}
+    plt.figure(figsize=(14, 8))
+    
+    all_values = []  # Pre výpočet správnych limitov grafu
+    
+    # Vyberieme prvý park pre porovnanie rokov
+    selected_park = zelenePlochy[6]  # Defaultne prvý park, môžete zmeniť index
+    
+    aoi_geometry = Geometry(
+        geometry={"type": "Polygon", "coordinates": [selected_park.suradnice]},
+        crs=CRS.WGS84
+    )
+    
+    print(f"\n--- Analyzujem park: {selected_park.nazov} ---")
+    print(f"--- Porovnávam jednotlivé roky (2-týždňové obdobia) ---")
+    
+    # Slovník na uloženie dát pre každý rok: {rok: [hodnoty pre každé 2-týždňové obdobie]}
+    yearly_data = {}
+    
+    # Stiahnutie dát pre každý rok
+    for year in YEARS_TO_ANALYZE:
+        print(f"\n--- Rok {year} ---")
+        yearly_data[year] = []
         
-        # Stiahnutie dát pre každý rok a mesiac
-        for year in YEARS_TO_ANALYZE:
-            for month in MONTHS_TO_ANALYZE:
-                mean_ndvi = get_ndvi_for_period(year, month, sh_config, aoi_geometry, OUTPUT_SIZE)
-                if mean_ndvi is not None:
-                    monthly_averages[month].append(mean_ndvi)
+        for start_month, start_day, end_month, end_day, period_name in BI_WEEKLY_PERIODS:
+            # Stiahnutie NDVI dát
+            mean_ndvi = get_ndvi_for_period(year, start_month, start_day, end_month, end_day, period_name, 
+                                           sh_config, aoi_geometry, OUTPUT_SIZE)
+            yearly_data[year].append(mean_ndvi)
+            if mean_ndvi is not None:
+                all_values.append(mean_ndvi)
+            
+            # Stiahnutie a uloženie RGB satelitného snímku
+            save_satellite_image(year, start_month, start_day, end_month, end_day, period_name,
+                               sh_config, aoi_geometry, OUTPUT_SIZE, selected_park.nazov)
+    
+    # Vytvorenie kriviek pre každý rok
+    colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
+    period_labels = [period[4] for period in BI_WEEKLY_PERIODS]
+    
+    for i, year in enumerate(YEARS_TO_ANALYZE):
+        # Pripravíme hodnoty pre daný rok
+        values = yearly_data[year]
         
-        # Výpočet priemernej hodnoty NDVI pre každý mesiac naprieč všetkými rokmi
-        print("\n--- Výpočet priemerných hodnôt NDVI pre jednotlivé mesiace ---")
-        monthly_means = {}
-        for month in MONTHS_TO_ANALYZE:
-            if monthly_averages[month]:
-                monthly_means[month] = np.mean(monthly_averages[month])
-                print(f"{MONTH_NAMES[MONTHS_TO_ANALYZE.index(month)]}: {monthly_means[month]:.4f} (z {len(monthly_averages[month])} meraní)")
+        # Vyberieme farbu
+        color = colors[i % len(colors)]
+        
+        # Vytvoríme spojnicový graf pre daný rok
+        plt.plot(period_labels, values, color=color, linewidth=2.5, marker='o', 
+                markersize=6, markerfacecolor=color, markeredgecolor='white', 
+                markeredgewidth=1.5, label=f'Rok {year}')
+        
+        print(f"\nRok {year}:")
+        for j, (start_month, start_day, end_month, end_day, period_name) in enumerate(BI_WEEKLY_PERIODS):
+            if yearly_data[year][j] is not None:
+                print(f"  {period_name}: {yearly_data[year][j]:.4f}")
             else:
-                print(f"{MONTH_NAMES[MONTHS_TO_ANALYZE.index(month)]}: Žiadne dostupné dáta")
-                monthly_means[month] = None
-        
-
-        
-        # Pripravíme dáta pre graf
-        months = list(monthly_means.keys())
-        values = [monthly_means[m] if monthly_means[m] is not None else 0 for m in months]
-        month_labels = MONTH_NAMES
-        
-        colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
-        random_color = random.choice(colors)
-        # Vytvoríme spojnicový graf (curve)
-        plt.plot(month_labels, values, color=random_color, linewidth=2.5, marker='o', 
-                markersize=8, markerfacecolor=random_color, markeredgecolor='white', 
-                markeredgewidth=2, label=f'{park.nazov}')
-        
-        # Pridáme hodnoty pri každom bode
-        for i, value in enumerate(values):
-            if monthly_means[months[i]] is not None:
-                plt.text(i, value + 0.01, f'{value:.3f}', 
-                        ha='center', va='bottom', fontsize=10, fontweight='bold')
-        
-        plt.xlabel('Mesiac', fontsize=12, fontweight='bold')
-        plt.ylabel('Priemerná NDVI', fontsize=12, fontweight='bold')
-        plt.title(f'Priemerná NDVI pre mesiace február-júl ({YEARS_TO_ANALYZE[0]}-{YEARS_TO_ANALYZE[-1]})', 
-                fontsize=14, fontweight='bold')
-        plt.ylim(0, max(values) * 1.15 if values else 1)
-        plt.grid(True, alpha=0.3, linestyle='--')
-        plt.legend()
-        plt.tight_layout()
+                print(f"  {period_name}: Žiadne dáta")
+    
+    # Nastavíme limity grafu
+    if all_values:
+        y_min = min(all_values) * 0.95
+        y_max = max(all_values) * 1.05
+        plt.ylim(y_min, y_max)
+    
+    plt.xlabel('2-týždňové obdobie', fontsize=12, fontweight='bold')
+    plt.ylabel('Priemerná NDVI', fontsize=12, fontweight='bold')
+    plt.title(f'Porovnanie NDVI naprieč rokmi (2-týždňové obdobia) - {selected_park.nazov}', 
+            fontsize=14, fontweight='bold')
+    plt.xticks(rotation=45, ha='right', fontsize=9)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.legend(loc='best', fontsize=10)
+    plt.tight_layout()
         
     # Uloženie grafu
-    output_filename = f"ndvi_monthly_average_{YEARS_TO_ANALYZE[0]}_{YEARS_TO_ANALYZE[-1]}.png"
+    output_filename = f"ndvi_yearly_comparison_{YEARS_TO_ANALYZE[0]}_{YEARS_TO_ANALYZE[-1]}_{selected_park.nazov.replace(' ', '_')}.png"
     plt.savefig(output_filename, dpi=300, bbox_inches='tight')
-    print(f"✅ Graf úspešne uložený ako: {output_filename}")
+    print(f"\n✅ Graf úspešne uložený ako: {output_filename}")
+    
+    # Uloženie dát do CSV súboru
+    csv_filename = f"ndvi_yearly_comparison_{YEARS_TO_ANALYZE[0]}_{YEARS_TO_ANALYZE[-1]}_{selected_park.nazov.replace(' ', '_')}.csv"
+    with open(csv_filename, 'w', newline='', encoding='utf-8') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        
+        # Hlavička - prvý stĺpec je "Obdobie", potom roky
+        header = ['Obdobie'] + [f'Rok {year}' for year in YEARS_TO_ANALYZE]
+        csv_writer.writerow(header)
+        
+        # Dáta - každý riadok je jedno 2-týždňové obdobie
+        for j, (start_month, start_day, end_month, end_day, period_name) in enumerate(BI_WEEKLY_PERIODS):
+            row = [period_name]
+            for year in YEARS_TO_ANALYZE:
+                value = yearly_data[year][j]
+                # Ak je hodnota None, zapíšeme prázdny reťazec
+                row.append(f"{value:.4f}" if value is not None else "")
+            csv_writer.writerow(row)
+    
+    print(f"✅ CSV súbor úspešne uložený ako: {csv_filename}")
 
     # Zobrazenie grafu
     plt.show()
