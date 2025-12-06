@@ -1,10 +1,13 @@
 import matplotlib
+
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import openmeteo_requests
 import pandas as pd
 import requests_cache
 from retry_requests import retry
+
+matplotlib.use("TkAgg")
 
 # Setup the Open-Meteo API client with cache and retry on error
 cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
@@ -60,8 +63,6 @@ for year in range(len(years)):
             print(data[year][:][i:i + days_threshold])
             start_days.append(i)
             break
-
-matplotlib.use("TkAgg")
 
 fig, ax = plt.subplots(figsize=(12, 7))
 arbitrary_common_year = 2024
