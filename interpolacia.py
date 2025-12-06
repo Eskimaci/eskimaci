@@ -2,6 +2,38 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
+def nenulova_hodnota(pole, idx):
+    if idx == 0:
+        i = 0
+        while pole[idx+i] == 0.0:
+            i+=1
+        return pole[idx+i]
+    elif idx == len(pole)-1:
+        i = 0
+        while pole[idx-i] == 0.0:
+            i+=1
+        return pole[idx-i]
+    else:
+        #doprava
+        i = 0
+        while pole[idx+i] == 0.0:
+            i += 1
+        prava = pole[idx+i]
+
+        #dolava
+        i = 0
+        while pole[idx-i] == 0.0:
+            i += 1
+        lava = pole[idx-i]
+
+        #linearna interpolacia
+        rozdiel = np.abs(lava - prava)
+        if lava < prava:
+            return lava+(rozdiel/2)
+        else:
+            return prava+(rozdiel/2)
+
+
 def hodnota_v_bode_x(x, pole_x, pole_y, pct):
     s = 0
     for i in range(pct):
@@ -9,17 +41,14 @@ def hodnota_v_bode_x(x, pole_x, pole_y, pct):
         for j in range(pct):
             if i != j:
                 p*=(x - pole_x[j])/(pole_x[i] - pole_x[j])
-        if pole_y[i] == 0:
-            if i-1 >= 0 and pole_y[i-1] != 0:
-                p *= pole_y[i-1]
-            elif i+1 < pct-1 and pole_y[i+1] != 0:
-                p *= pole_y[i+1]
+        if pole_y[i] == 0.0:
+            p*=nenulova_hodnota(pole_y, i)
         else:
             p *= pole_y[i]
         s += p
     return s
 
-with open('static/csv_raw_linear/nndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv', newline="")as csvfile:
+with open('static/csv_raw_linear/ndvi_yearly_comparison_2020_2025_Záhradkárska_Oblasť.csv', newline="")as csvfile:
     reader= csv.reader(csvfile)
     data = list(reader)
 print(data)
@@ -45,7 +74,7 @@ print(data_roky)
 
 header = ["Obdobie", "Rok 2020", "Rok 2021", "Rok 2022", "Rok 2023", "Rok 2024", "Rok 2025"]
 row_names = ["Feb 1-14", "Feb 15-28", "Mar 1-14", "Mar 15-31", "Apr 1-14", "Apr 15-30", "May 1-14", "May 15-31", "Jun 1-14", "Jun 15-30", "Jul 1-14", "Jul 15-31"]
-with open("static/csv_interpol_lin/vystup.csv", "w", newline="", encoding="utf-8") as f:
+with open("static/csv_interpol_lin/ndvi_yearly_comparison_2020_2025_Záhradkárska_Oblasť.csv", "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
     writer.writerow(header)
 
