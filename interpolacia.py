@@ -50,7 +50,7 @@ def hodnota_v_bode_x(x, pole_x, pole_y, pct):
         s += p
     return s
 
-with open('static/csv_raw_linear/ndvi_yearly_comparison_2020_2025_Záhradkárska_Oblasť.csv', newline="")as csvfile:
+with open('static/csv_raw_linear/ndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv', newline="")as csvfile:
     reader= csv.reader(csvfile)
     data = list(reader)
 print(data)
@@ -76,7 +76,7 @@ print(data_roky)
 
 header = ["Obdobie", "Rok 2020", "Rok 2021", "Rok 2022", "Rok 2023", "Rok 2024", "Rok 2025"]
 row_names = ["Feb 1-14", "Feb 15-28", "Mar 1-14", "Mar 15-31", "Apr 1-14", "Apr 15-30", "May 1-14", "May 15-31", "Jun 1-14", "Jun 15-30", "Jul 1-14", "Jul 15-31"]
-with open("static/csv_interpol_lin/ndvi_yearly_comparison_2020_2025_Záhradkárska_Oblasť.csv", "w", newline="", encoding="utf-8") as f:
+with open("static/csv_interpol_lin/ndvi_yearly_comparison_2020_2025_Nemocnicny_Park.csv", "w", newline="", encoding="utf-8") as f:
     writer = csv.writer(f)
     writer.writerow(header)
 
@@ -88,10 +88,8 @@ with open("static/csv_interpol_lin/ndvi_yearly_comparison_2020_2025_Záhradkárs
 
 #plot
 
-# x-ová os = 12 období
 x = np.arange(1, pocetx + 1)
 
-# názvy období (pre x-ticks)
 row_names = [
     "Feb 1-14", "Feb 15-28",
     "Mar 1-14", "Mar 15-31",
@@ -108,13 +106,14 @@ roky = ["2020", "2021", "2022", "2023", "2024", "2025"]
 fig, ax = plt.subplots(figsize=(14, 7))
 
 lines = []
-
+farby = ["red", "blue", "green", "brown", "cyan", "magenta"]
 # vykreslenie kriviek s možnosťou klikania (picker)
 for i in range(pocetRokov):
     line, = ax.plot(
         x, data_roky[i],
         marker="o",
         label=roky[i],
+        color=farby[i],
         picker=5              # umožní kliknúť na čiaru
     )
     lines.append(line)
@@ -128,8 +127,8 @@ def on_pick(event):
         l.set_color("gray")
         l.set_alpha(0.3)
 
-    line.set_linewidth(4)
-    line.set_color("red")
+    line.set_linewidth(2)
+    line.set_color(farby[int(str(line)[7:11])-2020])
     line.set_alpha(1.0)
 
     fig.canvas.draw_idle()
