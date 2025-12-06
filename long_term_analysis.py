@@ -24,6 +24,7 @@ from sentinelhub import (
     SHConfig,
     MosaickingOrder
 )
+<<<<<<< HEAD
 import json
 import random
 import os
@@ -34,6 +35,8 @@ class park:
     def __init__(self, nazov, suradnice):
         self.nazov = nazov
         self.suradnice = suradnice
+=======
+>>>>>>> 2af5e8f618d6d5f2220f29d52adbba591e52b0ea
 
 # --- 1. ZÁKLADNÁ KONFIGURÁCIA ---
 
@@ -51,6 +54,7 @@ sh_config.sh_client_id = CLIENT_ID
 sh_config.sh_client_secret = CLIENT_SECRET
 
 # Definovanie časového rozsahu analýzy
+<<<<<<< HEAD
 YEARS_TO_ANALYZE = [2020, 2021, 2022, 2023, 2024, 2025]
 
 # Definovanie 2-týždňových období (február až júl)
@@ -69,6 +73,11 @@ BI_WEEKLY_PERIODS = [
     (7, 1, 7, 14, 'Jul 1-14'),
     (7, 15, 7, 31, 'Jul 15-31'),
 ]
+=======
+YEARS_TO_ANALYZE = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
+TARGET_MONTH_START = "08-01"
+TARGET_MONTH_END = "08-31"
+>>>>>>> 2af5e8f618d6d5f2220f29d52adbba591e52b0ea
 
 # Definovanie oblasti záujmu (AOI) - Trnava
 POLYGON_COORDINATES = [
@@ -78,6 +87,7 @@ POLYGON_COORDINATES = [
 ]
 AOI_GEOMETRY = Geometry(geometry={"type": "Polygon", "coordinates": POLYGON_COORDINATES}, crs=CRS.WGS84)
 
+<<<<<<< HEAD
 with open('static/geojson/parkJankaKrala.geojson', 'r') as geojsonFile:
     geojsonData = json.load(geojsonFile)
     parkJankaKrala = park("Park Janka Kráľa", geojsonData['features'][0]['geometry']['coordinates'][0])
@@ -112,7 +122,8 @@ with open('static/geojson/nemocnicnyPark.geojson' , 'r') as geojsonFile:
     nemocnicnyPark = park("Nemocnicny Park", geojsonData['features'][0]['geometry']['coordinates'][0])
 
 zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast, nemocnicnyPark]
-
+=======
+>>>>>>> 2af5e8f618d6d5f2220f29d52adbba591e52b0ea
 # Výstupné parametre
 OUTPUT_SIZE = [1000, 1000]
 OUTPUT_FORMAT = MimeType.TIFF
@@ -149,6 +160,7 @@ function evaluatePixel(sample) {
 
 # --- 2. FUNKCIE PRE ANALÝZU ---
 
+<<<<<<< HEAD
 def save_satellite_image(year, start_month, start_day, end_month, end_day, period_name, config, geometry, size, park_name):
     """Stiahne a uloží RGB satelitný snímok s viditeľnými oblakmi."""
     print(f"Sťahujem RGB snímok pre {year} {period_name}...")
@@ -214,6 +226,12 @@ def get_ndvi_for_period(year, start_month, start_day, end_month, end_day, period
     
     time_interval = (f'{year}-{start_month:02d}-{start_day:02d}', f'{year}-{end_month:02d}-{end_day:02d}')
     
+=======
+def get_ndvi_for_year(year, config, geometry, size):
+    """Stiahne NDVI dáta pre zadaný rok."""
+    print(f"Sťahujem dáta pre rok {year}...")
+    time_interval = (f'{year}-{TARGET_MONTH_START}', f'{year}-{TARGET_MONTH_END}')
+>>>>>>> 2af5e8f618d6d5f2220f29d52adbba591e52b0ea
     request = SentinelHubRequest(
         evalscript=EVALSCRIPT_NDVI,
         input_data=[
@@ -231,6 +249,7 @@ def get_ndvi_for_period(year, start_month, start_day, end_month, end_day, period
     try:
         data = request.get_data(save_data=False)
         if not data:
+<<<<<<< HEAD
             print(f"Varovanie: Pre {year} {period_name} neboli vrátené žiadne dáta.")
             return None
         ndvi_array = data[0]
@@ -252,12 +271,24 @@ def get_ndvi_for_period(year, start_month, start_day, end_month, end_day, period
         return mean_ndvi
     except Exception as e:
         print(f"Chyba pri sťahovaní dát za {year} {period_name}: {e}")
+=======
+            print(f"Varovanie: Pre rok {year} neboli vrátené žiadne dáta.")
+            return None
+        ndvi_array = data[0]
+        print(f"DEBUG [{year}]: Tvar dát: {ndvi_array.shape}, Min: {np.min(ndvi_array):.4f}, Max: {np.max(ndvi_array):.4f}, Priemer: {np.mean(ndvi_array):.4f}")
+        if np.all(ndvi_array == 0):
+            print(f"DEBUG [{year}]: Varovanie - všetky hodnoty v poli sú nulové.")
+        return ndvi_array
+    except Exception as e:
+        print(f"Chyba pri sťahovaní dát za rok {year}: {e}")
+>>>>>>> 2af5e8f618d6d5f2220f29d52adbba591e52b0ea
         return None
 
 # --- 3. HLAVNÝ PROCES SPRACOVANIA ---
 
 def main():
     """Hlavná funkcia, ktorá orchesteruje celý proces analýzy."""
+<<<<<<< HEAD
     print("--- Spúšťam dlhodobú analýzu priemernej NDVI ---")
     
     # Vytvorenie grafu
@@ -359,6 +390,72 @@ def main():
             csv_writer.writerow(row)
     
     print(f"✅ CSV súbor úspešne uložený ako: {csv_filename}")
+=======
+    print("--- Spúšťam dlhodobú analýzu NDVI trendu ---")
+    
+    yearly_ndvi_data = [get_ndvi_for_year(year, sh_config, AOI_GEOMETRY, OUTPUT_SIZE) for year in YEARS_TO_ANALYZE]
+    yearly_ndvi_data = [data for data in yearly_ndvi_data if data is not None]
+    
+    if len(yearly_ndvi_data) < 2:
+        print("Chyba: Pre analýzu trendu sú potrebné dáta aspoň z dvoch rokov. Končím.")
+        return
+
+    # Spojenie dát do jedného 3D numpy poľa (roky, výška, šírka)
+    y = np.stack(yearly_ndvi_data, axis=0)
+    print(f"DEBUG: Tvar spojeného poľa (y): {y.shape}")
+
+    # 2. Výpočet trendu pre každý pixel (Vektorizovaná metóda)
+    print("Vypočítavam trend pre každý pixel (vektorizovaná metóda)...")
+>>>>>>> 2af5e8f618d6d5f2220f29d52adbba591e52b0ea
+
+    # Vytvoríme x-ovú os (čas)
+    n_years = y.shape[0]
+    x = np.arange(n_years)
+    
+    # Prepneme osi, aby sme mohli ľahko broadcastovať
+    # Tvar x: (N, 1, 1) -> bude sa opakovať pre každý pixel
+    # Tvar y: (N, H, W)
+    x_reshaped = x.reshape(n_years, 1, 1)
+
+    # Vypočítame priemery potrebné pre vzorec sklonu
+    mean_x = np.mean(x)
+    mean_y = np.mean(y, axis=0) # Priemer pre každý pixel cez všetky roky
+
+    # Vypočítame čitateľa a menovateľa vzorca pre sklon
+    # Vzorec: slope = Σ((x - mean_x)(y - mean_y)) / Σ((x - mean_x)^2)
+    numerator = np.sum((x_reshaped - mean_x) * (y - mean_y), axis=0)
+    denominator = np.sum((x - mean_x)**2)
+    
+    # Vypočítame finálnu mapu trendov
+    # Zabezpečíme sa proti deleniu nulou, ak by bol denominator 0
+    trend_map = np.divide(numerator, denominator, out=np.zeros_like(numerator), where=denominator!=0)
+
+    print("Výpočet trendu dokončený.")
+    print(f"DEBUG: Tvar mapy trendov: {trend_map.shape}")
+    print(f"DEBUG: Štatistiky mapy trendov - Min: {np.min(trend_map):.4f}, Max: {np.max(trend_map):.4f}, Priemer: {np.mean(trend_map):.4f}")
+
+    # 3. Vizualizácia a uloženie mapy trendu
+    print("Vytváram a ukladám mapu trendu...")
+    cmap_trend = LinearSegmentedColormap.from_list("trend_map", [(0, "red"), (0.5, "white"), (1, "green")])
+    plt.figure(figsize=(12, 10))
+    
+    # Normalizácia hodnôt sklonu pre lepšiu vizualizáciu
+    vlim = np.percentile(np.abs(trend_map), 98)
+    print(f"DEBUG: Vypočítaná hodnota vlim (98 percentil): {vlim:.4f}")
+
+    if vlim == 0:
+        print("DEBUG: vlim je 0, čo znamená, že mapa trendov je pravdepodobne prázdna. Nastavujem vlim na 1, aby sa predišlo chybe.")
+        vlim = 1.0
+    
+    img = plt.imshow(trend_map, cmap=cmap_trend, vmin=-vlim, vmax=vlim)
+    plt.colorbar(img, label="Sklon trendu NDVI (zmena za rok)")
+    plt.title(f"Trend vývoja vegetácie v Trnave ({YEARS_TO_ANALYZE[0]}-{YEARS_TO_ANALYZE[-1]})")
+    plt.xlabel("Pixel X")
+    plt.ylabel("Pixel Y")
+    
+    output_filename = f"ndvi_trend_trnava_{YEARS_TO_ANALYZE[0]}_{YEARS_TO_ANALYZE[-1]}.png"
+    plt.savefig(output_filename, dpi=300)
+    print(f"✅ Mapa trendu úspešne uložená ako: {output_filename}")
 
 if __name__ == "__main__":
     main()
