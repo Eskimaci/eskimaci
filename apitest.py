@@ -356,22 +356,21 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"An error occurred during request execution: {e}")
         print("Please check your CLIENT_ID and CLIENT_SECRET and ensure your time interval has valid, cloud-free data.")
-        exit()
+        
+    # Optional: Visualize the result
+    plt.figure(figsize=(8, 8))
+    plt.imshow(ndvi_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
+    plt.colorbar(label='NDVI Value', orientation='vertical')
+    plt.title(f"NDVI from Sentinel-2 (Trnava, August 2023)")
+    plt.xlabel("Pixel X")
+    plt.ylabel("Pixel Y")
+    plt.show()
 
-        # Optional: Visualize the result
-        plt.figure(figsize=(8, 8))
-        plt.imshow(ndvi_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
-        plt.colorbar(label='NDVI Value', orientation='vertical')
-        plt.title(f"NDVI from Sentinel-2 (Trnava, August 2023)")
-        plt.xlabel("Pixel X")
-        plt.ylabel("Pixel Y")
-        plt.show()
 
-
-        plt.figure(figsize=(8, 8))
-        plt.imshow(lci_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
-        plt.colorbar(label='LCI Value', orientation='vertical')
-        plt.title(f"LCI from Sentinel-2 (Trnava, August 2023)")
-        plt.xlabel("Pixel X")
-        plt.ylabel("Pixel Y")
-        plt.show()
+    plt.figure(figsize=(8, 8))
+    plt.imshow(lci_array, cmap='RdYlGn', vmin=-1.0, vmax=1.0) 
+    plt.colorbar(label='LCI Value', orientation='vertical')
+    plt.title(f"LCI from Sentinel-2 (Trnava, August 2023)")
+    plt.xlabel("Pixel X")
+    plt.ylabel("Pixel Y")
+    plt.show()

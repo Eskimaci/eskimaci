@@ -4,17 +4,15 @@ Skript pre dlhodobú analýzu vegetačného indexu (NDVI) z dát Sentinel-2.
 
 Tento skript vykonáva nasledujúce kroky:
 1. Pripojí sa k Sentinel Hub API.
-2. Pre definovanú oblasť (Trnava) a časové obdobie (posledné 3 roky, mesiac august) 
+2. Pre definovanú oblasť (Trnava) a časové obdobie (2020-2025, mesiace február-júl) 
    stiahne dáta NDVI.
-3. Vypočíta trend vývoja vegetácie pre každý pixel pomocou lineárnej regresie.
-4. Vytvorí a uloží sumárnu mapu, ktorá farebne vizualizuje tento trend 
-   (zlepšenie, zhoršenie, stabilný stav).
+3. Vypočíta priemernú hodnotu NDVI pre každý mesiac naprieč všetkými rokmi.
+4. Vytvorí a uloží graf zobrazujúci priemernú hodnotu NDVI pre jednotlivé mesiace.
 """
 
 import numpy as np
 from decouple import config
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 from sentinelhub import (
     SentinelHubRequest,
     DataCollection,
@@ -41,17 +39,33 @@ sh_config.sh_client_id = CLIENT_ID
 sh_config.sh_client_secret = CLIENT_SECRET
 
 # Definovanie časového rozsahu analýzy
-YEARS_TO_ANALYZE = [2019, 2020, 2021, 2022, 2023, 2024, 2025]
-TARGET_MONTH_START = "08-01"
-TARGET_MONTH_END = "08-31"
+YEARS_TO_ANALYZE = [2020, 2021, 2022, 2023, 2024, 2025]
+MONTHS_TO_ANALYZE = [2, 3, 4, 5, 6, 7]  # Február až Júl
+MONTH_NAMES = ['Február', 'Marec', 'Apríl', 'Máj', 'Jún', 'Júl']
 
-# Definovanie oblasti záujmu (AOI) - Trnava
+# Definovanie oblasti záujmu (AOI) - park Janka Kráľa v Trnave
 POLYGON_COORDINATES = [
-    [[17.5724, 48.3860], [17.5471, 48.3819], [17.5475, 48.3700], [17.5702, 48.3484],
-     [17.6294, 48.3375], [17.6504, 48.3605], [17.6093, 48.3768], [17.6143, 48.3912],
-     [17.5836, 48.4043], [17.5609, 48.3925], [17.5678, 48.3882], [17.5724, 48.3860]]
+    [17.56817676145432, 48.36381310513961],
+    [17.56981977533604, 48.36359325939384],
+    [17.57174067288043, 48.36399500611071],
+    [17.57313437147868, 48.36471674075158],
+    [17.57267368229819, 48.36520459481028],
+    [17.57290262998025, 48.36555138873172],
+    [17.5810650959477, 48.36958824198187],
+    [17.58138863017993, 48.36935271412575],
+    [17.58186315196065, 48.36958889475593],
+    [17.58223565532713, 48.3695203311474],
+    [17.58275839314176, 48.36977717283936],
+    [17.58309114863392, 48.37065902992905],
+    [17.58280761897207, 48.37081050876479],
+    [17.58292551563057, 48.37106539370707],
+    [17.58277629388541, 48.37119493710695],
+    [17.56817676145432, 48.36381310513961]
 ]
-AOI_GEOMETRY = Geometry(geometry={"type": "Polygon", "coordinates": POLYGON_COORDINATES}, crs=CRS.WGS84)
+AOI_GEOMETRY = Geometry(
+    geometry={"type": "Polygon", "coordinates": [POLYGON_COORDINATES]},
+    crs=CRS.WGS84
+)
 
 # Výstupné parametre
 OUTPUT_SIZE = [1000, 1000]
@@ -75,106 +89,114 @@ function evaluatePixel(sample) {
 
 # --- 2. FUNKCIE PRE ANALÝZU ---
 
-def get_ndvi_for_year(year, config, geometry, size):
-    """Stiahne NDVI dáta pre zadaný rok."""
-    print(f"Sťahujem dáta pre rok {year}...")
-    time_interval = (f'{year}-{TARGET_MONTH_START}', f'{year}-{TARGET_MONTH_END}')
+def get_ndvi_for_period(year, month, config, geometry, size):
+    """Stiahne NDVI dáta pre zadaný rok a mesiac."""
+    print(f"Sťahujem dáta pre {year}-{month:02d}...")
+    
+    # Určíme prvý a posledný deň mesiaca
+    if month == 2:
+        # Február - kontrola na priestupný rok
+        last_day = 29 if (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)) else 28
+    elif month in [4, 6]:
+        last_day = 30
+    else:
+        last_day = 31
+    
+    time_interval = (f'{year}-{month:02d}-01', f'{year}-{month:02d}-{last_day}')
+    
     request = SentinelHubRequest(
-        evalscript=EVALSCRIPT_NDVI,
-        input_data=[
-            SentinelHubRequest.input_data(
-                data_collection=DataCollection.SENTINEL2_L2A,
-                time_interval=time_interval,
-                mosaicking_order=MosaickingOrder.LEAST_CC,
-            )
-        ],
-        responses=[SentinelHubRequest.output_response('default', OUTPUT_FORMAT)],
-        geometry=geometry,
-        size=size,
-        config=config
-    )
+            evalscript=EVALSCRIPT_NDVI,
+            input_data=[
+                SentinelHubRequest.input_data(
+                    data_collection=DataCollection.SENTINEL2_L2A,
+                    time_interval=time_interval,
+                    mosaicking_order=MosaickingOrder.LEAST_CC,
+                )
+            ],
+            responses=[
+                SentinelHubRequest.output_response('default', OUTPUT_FORMAT)
+            ],
+            geometry=geometry,
+            size=size,
+            config=config
+        )
     try:
         data = request.get_data(save_data=False)
         if not data:
-            print(f"Varovanie: Pre rok {year} neboli vrátené žiadne dáta.")
+            print(f"Varovanie: Pre {year}-{month:02d} neboli vrátené žiadne dáta.")
             return None
         ndvi_array = data[0]
-        print(f"DEBUG [{year}]: Tvar dát: {ndvi_array.shape}, Min: {np.min(ndvi_array):.4f}, Max: {np.max(ndvi_array):.4f}, Priemer: {np.mean(ndvi_array):.4f}")
-        if np.all(ndvi_array == 0):
-            print(f"DEBUG [{year}]: Varovanie - všetky hodnoty v poli sú nulové.")
-        return ndvi_array
+        # Vypočítame priemernú hodnotu NDVI pre celú oblasť
+        mean_ndvi = np.mean(ndvi_array[ndvi_array != 0])  # Ignorujeme nulové hodnoty (bez dát)
+        print(f"DEBUG [{year}-{month:02d}]: Priemerná NDVI: {mean_ndvi:.4f}")
+        return mean_ndvi
     except Exception as e:
-        print(f"Chyba pri sťahovaní dát za rok {year}: {e}")
+        print(f"Chyba pri sťahovaní dát za {year}-{month:02d}: {e}")
         return None
 
 # --- 3. HLAVNÝ PROCES SPRACOVANIA ---
 
 def main():
     """Hlavná funkcia, ktorá orchesteruje celý proces analýzy."""
-    print("--- Spúšťam dlhodobú analýzu NDVI trendu ---")
+    print("--- Spúšťam dlhodobú analýzu priemernej NDVI ---")
     
-    yearly_ndvi_data = [get_ndvi_for_year(year, sh_config, AOI_GEOMETRY, OUTPUT_SIZE) for year in YEARS_TO_ANALYZE]
-    yearly_ndvi_data = [data for data in yearly_ndvi_data if data is not None]
+    # Slovník na uloženie dát: {mesiac: [hodnoty pre všetky roky]}
+    monthly_averages = {month: [] for month in MONTHS_TO_ANALYZE}
     
-    if len(yearly_ndvi_data) < 2:
-        print("Chyba: Pre analýzu trendu sú potrebné dáta aspoň z dvoch rokov. Končím.")
-        return
-
-    # Spojenie dát do jedného 3D numpy poľa (roky, výška, šírka)
-    y = np.stack(yearly_ndvi_data, axis=0)
-    print(f"DEBUG: Tvar spojeného poľa (y): {y.shape}")
-
-    # 2. Výpočet trendu pre každý pixel (Vektorizovaná metóda)
-    print("Vypočítavam trend pre každý pixel (vektorizovaná metóda)...")
-
-    # Vytvoríme x-ovú os (čas)
-    n_years = y.shape[0]
-    x = np.arange(n_years)
+    # Stiahnutie dát pre každý rok a mesiac
+    for year in YEARS_TO_ANALYZE:
+        for month in MONTHS_TO_ANALYZE:
+            mean_ndvi = get_ndvi_for_period(year, month, sh_config, AOI_GEOMETRY, OUTPUT_SIZE)
+            if mean_ndvi is not None:
+                monthly_averages[month].append(mean_ndvi)
     
-    # Prepneme osi, aby sme mohli ľahko broadcastovať
-    # Tvar x: (N, 1, 1) -> bude sa opakovať pre každý pixel
-    # Tvar y: (N, H, W)
-    x_reshaped = x.reshape(n_years, 1, 1)
-
-    # Vypočítame priemery potrebné pre vzorec sklonu
-    mean_x = np.mean(x)
-    mean_y = np.mean(y, axis=0) # Priemer pre každý pixel cez všetky roky
-
-    # Vypočítame čitateľa a menovateľa vzorca pre sklon
-    # Vzorec: slope = Σ((x - mean_x)(y - mean_y)) / Σ((x - mean_x)^2)
-    numerator = np.sum((x_reshaped - mean_x) * (y - mean_y), axis=0)
-    denominator = np.sum((x - mean_x)**2)
+    # Výpočet priemernej hodnoty NDVI pre každý mesiac naprieč všetkými rokmi
+    print("\n--- Výpočet priemerných hodnôt NDVI pre jednotlivé mesiace ---")
+    monthly_means = {}
+    for month in MONTHS_TO_ANALYZE:
+        if monthly_averages[month]:
+            monthly_means[month] = np.mean(monthly_averages[month])
+            print(f"{MONTH_NAMES[MONTHS_TO_ANALYZE.index(month)]}: {monthly_means[month]:.4f} (z {len(monthly_averages[month])} meraní)")
+        else:
+            print(f"{MONTH_NAMES[MONTHS_TO_ANALYZE.index(month)]}: Žiadne dostupné dáta")
+            monthly_means[month] = None
     
-    # Vypočítame finálnu mapu trendov
-    # Zabezpečíme sa proti deleniu nulou, ak by bol denominator 0
-    trend_map = np.divide(numerator, denominator, out=np.zeros_like(numerator), where=denominator!=0)
-
-    print("Výpočet trendu dokončený.")
-    print(f"DEBUG: Tvar mapy trendov: {trend_map.shape}")
-    print(f"DEBUG: Štatistiky mapy trendov - Min: {np.min(trend_map):.4f}, Max: {np.max(trend_map):.4f}, Priemer: {np.mean(trend_map):.4f}")
-
-    # 3. Vizualizácia a uloženie mapy trendu
-    print("Vytváram a ukladám mapu trendu...")
-    cmap_trend = LinearSegmentedColormap.from_list("trend_map", [(0, "red"), (0.5, "white"), (1, "green")])
-    plt.figure(figsize=(12, 10))
+    # Vytvorenie grafu
+    print("\n--- Vytváram graf priemernej NDVI ---")
+    plt.figure(figsize=(12, 6))
     
-    # Normalizácia hodnôt sklonu pre lepšiu vizualizáciu
-    vlim = np.percentile(np.abs(trend_map), 98)
-    print(f"DEBUG: Vypočítaná hodnota vlim (98 percentil): {vlim:.4f}")
-
-    if vlim == 0:
-        print("DEBUG: vlim je 0, čo znamená, že mapa trendov je pravdepodobne prázdna. Nastavujem vlim na 1, aby sa predišlo chybe.")
-        vlim = 1.0
+    # Pripravíme dáta pre graf
+    months = list(monthly_means.keys())
+    values = [monthly_means[m] if monthly_means[m] is not None else 0 for m in months]
+    month_labels = MONTH_NAMES
     
-    img = plt.imshow(trend_map, cmap=cmap_trend, vmin=-vlim, vmax=vlim)
-    plt.colorbar(img, label="Sklon trendu NDVI (zmena za rok)")
-    plt.title(f"Trend vývoja vegetácie v Trnave ({YEARS_TO_ANALYZE[0]}-{YEARS_TO_ANALYZE[-1]})")
-    plt.xlabel("Pixel X")
-    plt.ylabel("Pixel Y")
+    # Vytvoríme spojnicový graf (curve)
+    plt.plot(month_labels, values, color='green', linewidth=2.5, marker='o', 
+             markersize=8, markerfacecolor='darkgreen', markeredgecolor='white', 
+             markeredgewidth=2, label='Priemerná NDVI')
     
-    output_filename = f"ndvi_trend_trnava_{YEARS_TO_ANALYZE[0]}_{YEARS_TO_ANALYZE[-1]}.png"
-    plt.savefig(output_filename, dpi=300)
-    print(f"✅ Mapa trendu úspešne uložená ako: {output_filename}")
+    # Pridáme hodnoty pri každom bode
+    for i, value in enumerate(values):
+        if monthly_means[months[i]] is not None:
+            plt.text(i, value + 0.01, f'{value:.3f}', 
+                    ha='center', va='bottom', fontsize=10, fontweight='bold')
+    
+    plt.xlabel('Mesiac', fontsize=12, fontweight='bold')
+    plt.ylabel('Priemerná NDVI', fontsize=12, fontweight='bold')
+    plt.title(f'Priemerná NDVI pre mesiace február-júl ({YEARS_TO_ANALYZE[0]}-{YEARS_TO_ANALYZE[-1]})', 
+              fontsize=14, fontweight='bold')
+    plt.ylim(0, max(values) * 1.15 if values else 1)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.legend()
+    plt.tight_layout()
+    
+    # Uloženie grafu
+    output_filename = f"ndvi_monthly_average_{YEARS_TO_ANALYZE[0]}_{YEARS_TO_ANALYZE[-1]}.png"
+    plt.savefig(output_filename, dpi=300, bbox_inches='tight')
+    print(f"✅ Graf úspešne uložený ako: {output_filename}")
+    
+    # Zobrazenie grafu
+    plt.show()
 
 if __name__ == "__main__":
     main()
