@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("TkAgg")
 import csv
 
 def nenulova_hodnota(pole, idx):
@@ -99,20 +101,49 @@ row_names = [
     "Jul 1-14", "Jul 15-31"
 ]
 
-# názvy rokov
 roky = ["2020", "2021", "2022", "2023", "2024", "2025"]
 
-plt.figure(figsize=(14, 7))
 
+#plot so zvyrazneniami myskou
+fig, ax = plt.subplots(figsize=(14, 7))
+
+lines = []
+
+# vykreslenie kriviek s možnosťou klikania (picker)
 for i in range(pocetRokov):
-    plt.plot(x, data_roky[i], marker="o", label=roky[i])
+    line, = ax.plot(
+        x, data_roky[i],
+        marker="o",
+        label=roky[i],
+        picker=5              # umožní kliknúť na čiaru
+    )
+    lines.append(line)
 
-plt.xticks(x, row_names, rotation=45, ha="right")
-plt.xlabel("Obdobie")
-plt.ylabel("NDVI")
-plt.ylim(0, 1)
-plt.title("NDVI vývoj podľa rokov (interpolované hodnoty)")
-plt.grid(True, alpha=0.3)
-plt.legend()
+# funkcia po kliknutí na čiaru
+def on_pick(event):
+    line = event.artist
+
+    for l in lines:
+        l.set_linewidth(1.5)
+        l.set_color("gray")
+        l.set_alpha(0.3)
+
+    line.set_linewidth(4)
+    line.set_color("red")
+    line.set_alpha(1.0)
+
+    fig.canvas.draw_idle()
+
+# prepojenie eventu
+fig.canvas.mpl_connect("pick_event", on_pick)
+
+ax.set_xticks(x)
+ax.set_xticklabels(row_names, rotation=45, ha="right")
+ax.set_xlabel("Obdobie")
+ax.set_ylabel("NDVI")
+ax.set_ylim(0, 1)
+ax.set_title("NDVI vývoj podľa rokov (interpolované hodnoty)")
+ax.grid(True, alpha=0.3)
+ax.legend()
 plt.tight_layout()
 plt.show()
