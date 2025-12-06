@@ -1,141 +1,124 @@
-# 🚀 Hackathon Setup Guide: Analýza dát zo Sentinelu v Trnave
+# 🚀 Projekt: Analýza mestskej zelene v Trnave
 
-**Cieľ:** Pripraviť kompletné vývojové prostredie na spracovanie satelitných snímok (Sentinel-2) do 15 minút.
+**Cieľ:** Webová aplikácia pre analýzu a vizualizáciu dlhodobých trendov vegetácie (NDVI) v Trnave pomocou dát zo Sentinel-2 a porovnanie s teplotnými dátami.
 
-**Platforma:** Python 3.13
-
----
-
-## 1. Inštalácia IDE (PyCharm)
-
-Odporúčané IDE je [PyCharm Community Edition](https://www.jetbrains.com/pycharm/download/), ktoré je zadarmo a plne
-postačujúce pre tento projekt.
-
-### 🪟 Windows
-
-1. Stiahnite si **PyCharm Community Edition** z oficiálnej stránky.
-2. Spustite inštalátor (`.exe`).
-3. **Kľúčový krok:** Počas inštalácie zaškrtnite možnosť **"Add 'bin' folder to the PATH"**.
-4. Po dokončení inštalácie odporúčame reštartovať PC.
-
-### 🍎 macOS
-
-- **Cez Homebrew (odporúčané):**
-  Ak máte nainštalovaný [Homebrew](https://brew.sh/), otvorte terminál a zadajte:
-  ```sh
-  brew install --cask pycharm-ce
-  ```
-- **Manuálna inštalácia:**
-    1. Stiahnite si `.dmg` súbor z webu JetBrains.
-    2. Otvorte ho a presuňte ikonu PyCharm do priečinku `Applications`.
-
-### 🐧 Linux (Ubuntu/Debian)
-
-- **Cez Snap (odporúčané):**
-  Otvorte terminál a zadajte príkaz:
-  ```sh
-  sudo snap install pycharm-community --classic
-  ```
-- **Cez Software Center:**
-  Vyhľadajte "PyCharm Community" a nainštalujte.
+**Platforma:** Python 3.13, Flask
 
 ---
 
-## 2. Inštalácia Pythonu (verzia 3.13)
+## 1. Architektúra a Funkcionalita
 
-Potrebujeme samotný engine pre beh skriptov. Verziu si overíte v termináli príkazom `python3 --version`.
+Aplikácia má dve hlavné funkcie:
 
-### 🪟 Windows
+1.  **Dynamická analýza trendu vegetácie:** Používateľ si môže zvoliť obdobie (roky a sezónu) a aplikácia naživo vygeneruje mapu, ktorá ukazuje, ako sa zeleň v Trnave dlhodobo mení (zlepšuje/zhoršuje). Využíva priame pripojenie na **Sentinel Hub API**.
+2.  **Porovnávacie grafy:** Pre vybrané parky v Trnave aplikácia zobrazuje interaktívne grafy, ktoré porovnávajú vývoj NDVI a teplôt v priebehu rokov 2020-2025.
 
-1. Stiahnite si inštalátor **Python 3.13** z [oficiálnej stránky](https://www.python.org/downloads/).
-2. **POZOR:** Pri spustení inštalácie zaškrtnite na spodnej lište možnosť **"Add Python to PATH"**.
+**UPOZORNENIE:** Analýza odhalila, že zatiaľ čo NDVI dáta sú korektne z Trnavy, teplotné dáta v porovnávacom grafe pochádzajú z lokality v Berlíne, Nemecko.
 
-### 🍎 macOS
+---
 
-Použite Homebrew v termináli:
+## 2. Inštalácia Prostredia
 
-```sh
-brew install python@3.13
+### A. Klonovanie repozitára
+```bash
+git clone <https://github.com/Eskimaci/eskimaci.git>
+cd eskimaci
 ```
 
-### 🐧 Linux
-
-Väčšina distribúcií už Python má. Ak nie, alebo ak máte staršiu verziu, použite:
-
-```sh
-sudo apt update && sudo apt install python3 python3-pip python3-venv
-```
-
----
-
-## 3. Založenie Projektu a Virtuálneho Prostredia (Sandbox)
-
-Každý projekt by mal mať vlastné izolované prostredie, aby sa predišlo konfliktom medzi knižnicami.
-
-1. Otvorte **PyCharm**.
-2. Zvoľte **New Project**.
-3. Nastavte nasledujúce parametre:
-    - **Location:** `.../TrnavaHackathon` (alebo názov podľa seba).
-    - **Interpreter type:** Zvoľte **Project venv**.
-    - **Python version:** Z ponuky vyberte nainštalovanú verziu 3.13.
-4. Kliknite na **Create**.
-
----
-
-## 4. Inštalácia Knižníc (Nástroje)
-
-Tieto knižnice sú nevyhnutné na analýzu (NDVI), detekciu objektov a prácu s geodátami.
-
-V PyCharme otvorte panel **Terminal** (v dolnej lište) a skopírujte tam nasledujúci príkaz na hromadnú inštaláciu:
+### B. Python a Virtuálne Prostredie
+Uistite sa, že máte nainštalovaný Python 3.13.
 
 ```bash
-pip install numpy matplotlib opencv-python shapely geopandas rasterio sentinelsat
+# Vytvorenie virtuálneho prostredia
+python3 -m venv venv
+
+# Aktivácia prostredia
+# macOS/Linux:
+source venv/bin/activate
+# Windows:
+# venv\Scripts\activate
 ```
 
-### Vysvetlenie arzenálu:
+### C. Inštalácia Knižníc
+Všetky potrebné knižnice sú v súbore `requirements.txt`. Nainštalujte ich príkazom:
 
-- **[numpy](https://pypi.org/project/numpy/):** Základ pre matematiku a prácu s maticami (nevyhnutné pre výpočet indexov
-  ako NDVI).
-- **[matplotlib](https://pypi.org/project/matplotlib/):** Knižnica na vykresľovanie grafov a máp pre vizualizáciu
-  výsledkov.
-- **[opencv-python](https://pypi.org/project/opencv-python/):** Knižnica pre počítačové videnie (detekcia budov, ciest,
-  klasifikácia terénu).
-- **[shapely](https://pypi.org/project/Shapely/) & [geopandas](https://pypi.org/project/geopandas/):** Nástroje na prácu
-  s geometrickými dátami vo formáte GeoJSON (napr. ohraničenie územia Trnavy).
-- **[rasterio](https://pypi.org/project/rasterio/):** Efektívna knižnica na čítanie satelitných snímok (formát GeoTIFF).
-  Je to rýchlejšia a flexibilnejšia alternatíva k SNAP API.
-- **[sentinelsat](https://pypi.org/project/sentinelsat/):** Voliteľná knižnica na automatizované sťahovanie dát priamo z
-  Pythonu.
+```bash
+pip install -r requirements.txt
+```
+
+#### ⚠️ Poznámky pre jednotlivé OS
+Inštalácia niektorých geovedeckých knižníc (`rasterio`, `geopandas`) môže byť zložitá kvôli ich závislosti na C++ knižnici GDAL.
+
+*   **🪟 Windows:**
+    *   Priama inštalácia cez `pip` s veľkou pravdepodobnosťou zlyhá, ak nemáte správne nainštalované a nakonfigurované GDAL.
+    *   **Odporúčaný postup:** Nainštalujte tieto knižnice pomocou manažéra balíčkov `conda` (z prostredia Anaconda/Miniconda), ktorý sa postará o všetky závislosti:
+        ```bash
+        conda install -c conda-forge geopandas rasterio
+        ```
+    *   Až potom spustite `pip install -r requirements.txt` na doinštalovanie ostatných závislostí.
+
+*   **🍎 macOS:**
+    *   Inštalácia by mala byť jednoduchšia. Ak narazíte na problém s GDAL, nainštalujte ho cez Homebrew:
+        ```bash
+        brew install gdal
+        ```
+    *   Následne by mal príkaz `pip install -r requirements.txt` fungovať korektne.
+
+*   **🐧 Linux (Debian/Ubuntu):**
+    *   Pred inštaláciou sa uistite, že máte nainštalované vývojárske hlavičky pre GDAL:
+        ```bash
+        sudo apt-get update && sudo apt-get install libgdal-dev
+        ```
+    *   Potom by mala inštalácia cez `pip` prebehnúť bez problémov.
+
+#### Kľúčové knižnice v projekte:
+- **[Flask](https://flask.palletsprojects.com/):** Mikro-framework, na ktorom beží backend aplikácie.
+- **[sentinelhub](https://sentinelhub-py.readthedocs.io/):** Oficiálna knižnica pre priame sťahovanie a spracovanie dát zo Sentinel Hub API. Jadro dynamickej analýzy.
+- **[openmeteo_requests](https://pypi.org/project/openmeteo-requests/):** Knižnica na sťahovanie historických dát o počasí.
+- **[numpy](https://numpy.org/):** Základ pre numerické výpočty, najmä pre prácu s rastrovými dátami (NDVI) a výpočet trendu.
+- **[pandas](https://pandas.pydata.org/) & [geopandas](https://geopandas.org/):** Nástroje na manipuláciu s dátovými tabuľkami a geo-dátami.
+- **[matplotlib](https://matplotlib.org/):** Vykresľovanie finálnej mapy trendu.
+- **[plotly](https://plotly.com/python/):** Generovanie interaktívnych grafov vo webovom rozhraní.
+- **[python-decouple](https://pypi.org/project/python-decouple/):** Načítavanie citlivých premenných (API kľúče) zo súboru.
 
 ---
 
-## 5. Prístup k Dátam (Copernicus)
+## 3. Konfigurácia API Prístupu
 
-Bez dát nemáme čo analyzovať.
+Pre fungovanie dynamickej analýzy (Funkcionalita 1) je potrebné získať prístupové údaje k Sentinel Hub.
 
-1. Vytvorte si účet (každý člen tímu) na [**Copernicus Dataspace Ecosystem**](https://dataspace.copernicus.eu/).
-2. Pre analýzu budeme sťahovať produkty **Sentinel-2 L2A**. Dátová vrstva L2A je už atmosféricky korigovaná, čo nám
-   ušetrí veľa času.
+1.  Vytvorte si účet na [**Copernicus Dataspace Ecosystem**](https://dataspace.copernicus.eu/).
+2.  Vytvorte si OAuth Client v dashboarde a získajte `Client ID` a `Client Secret`.
+3.  V hlavnom priečinku projektu vytvorte súbor s názvom `.env`
+4.  Do súboru `.env` vložte svoje prístupové údaje v nasledovnom formáte:
 
----
-
-> ### 💡 Tip Mentora pre SNAP API
->
-> Ak by ste v zadaní hackathonu silou-mocou trvali na použití `snappy` (oficiálne, ale komplikované Python API pre
-softvér SNAP od ESA):
->
-> 1. Museli by ste stiahnuť a nainštalovať softvér **ESA SNAP**.
-> 2. Počas inštalácie je potrebné správne nakonfigurovať prepojenie s Pythonom, čo je často problematické a zlyháva na
-     novších verziách Pythonu (nad 3.8).
->
-> **Rada:** Na 48-hodinovom hackathone sa `snappy` radšej vyhnite. Použitie `rasterio` a `numpy` je výrazne rýchlejšie,
-jednoduchšie na inštaláciu a výsledok (napr. NDVI mapa) je úplne rovnaký.
+```
+CLIENT_ID=vas_client_id
+CLIENT_SECRET=vas_client_secret
+```
 
 ---
 
-### Ako toto všetko pomáha odpovedať na otázku, či je dobré bývať v Trnave?
+## 4. Spustenie Aplikácie
 
-S týmto setupom dokážete do 30 minút od začiatku načítať satelitnú snímku Trnavy, vypočítať, aký je podiel zelene (
-NDVI), a vizualizovať to. Získate nástroj na analýzu založenú na reálnych dátach, nie len na dojmoch.
+Po aktivácii virtuálneho prostredia a nainštalovaní knižníc spustite Flask server:
 
-Máte všetko nainštalované? Môžeme prejsť na "Hello World" kód pre načítanie prvej satelitnej snímky.
+```bash
+flask --app backend run --debug
+```
+Alebo alternatívne:
+```bash
+python backend.py
+```
+
+Aplikácia bude dostupná na adrese `http://127.0.0.1:5001`.
+
+---
+> ### 💡 Poznámka k ostatným skriptom
+>
+> V repozitári sa nachádzajú aj ďalšie skripty (`getMeteoData.py`, `interpolacia.py`, `createGeojson.py`), ktoré nie sú priamo súčasťou Flask aplikácie. Tieto slúžili na jednorazovú prípravu a spracovanie statických dát (CSV a GeoJSON súbory), ktoré aplikácia využíva pre porovnávacie grafy. Nie je nutné ich spúšťať pre bežnú prevádzku aplikácie.
+>
+> #### Poznámka k Matplotlib Backendu
+> Hlavná webová aplikácia (spúšťaná cez `backend.py`) používa `matplotlib.use('Agg')`, čo je neinteraktívny backend, ktorý ukladá obrázky do súborov bez potreby grafického rozhrania. To zaručuje bezproblémový beh na akomkoľvek serverovom prostredí (Windows, macOS, Linux).
+>
+> Naopak, pomocné skripty (`getMeteoData.py`, `interpolacia.py`) používajú `matplotlib.use('TkAgg')` a pri priamom spustení sa pokúsia otvoriť okno s grafom. Na niektorých systémoch to môže vyžadovať doinštalovanie knižníc pre GUI (napr. `python3-tk` na Linuxe).

@@ -1,54 +1,79 @@
-# SENTINEL-2 DATA CONFIGURATION
+# SENTINEL-2 DÁTA: Konfigurácia a Metodika v Projekte
 
-## 1. Access Platform
+Tento dokument vysvetľuje, ako projekt pracuje s dátami zo Sentinel-2.
 
-* **URL:** [Copernicus Browser](https://dataspace.copernicus.eu/browser)
-* **Login:** Required for downloading.
+---
 
-## 2. Search Filters (Copy & Paste)
+## 1. Primárna Metóda: Priamy Prístup cez API (`sentinelhub`)
 
-Configure the search panel on the left with these exact parameters to match the hackathon requirements:
+Hlavná funkcionalita projektu (dynamická analýza trendov) **nesťahuje manuálne ZIP súbory**. Namiesto toho využíva knižnicu `sentinelhub` v Pythone na priamy prístup k dátam cez API.
 
-* **Location:** `Trnava, Slovakia`
-* **Data Source:** `Sentinel-2`
-* [cite_start]**Product Level:** `L2A` (Level-2A, Atmospherically Corrected) [cite: 88]
-    * *Note: Do NOT use L1C (Top of Atmosphere).*
-* **Cloud Cover:** `0% - 20%`
-    * [cite_start]*Tip: Aim for 0-10%, but 20% is acceptable if the ROI (Trnava) is clear.* [cite: 87]
-* **Time Range:** `2023-06-01` to `2023-08-31` (Summer months for best vegetation contrast)
-    * [cite_start]*Alternative:* Compare with `2024-06-01` to `2024-08-31` for year-over-year analysis. [cite: 10]
+*   **Proces:** Skript `long_term_analysis_trnava.py` posiela požiadavku na Sentinel Hub API, ktorá obsahuje:
+    1.  **Oblasť záujmu (AOI):** Polygón Trnavy.
+    2.  **Časový filter:** Zvolené roky a mesiace.
+    3.  **Evalscript:** Krátky skript v jazyku JavaScript, ktorý sa vykoná priamo na serveroch Sentinel Hub.
 
-## 3. Download Process
+*   **Evalscript pre NDVI:** Toto je kľúčová časť, ktorá počíta NDVI na diaľku a posiela späť do aplikácie už hotové dáta, čím šetrí lokálne zdroje. V projekte použitý evalscript vyzerá takto:
 
-1. **Visualize:** Check the preview image to ensure Trnava is not covered by clouds.
-2. **Download:** Click the "Download" icon.
-3. **File Format:** `.zip` archive (approx. 800MB - 1.2GB).
-4. **Extraction:** Unzip to get the `.SAFE` directory.
+```javascript
+//VERSION=3
+function setup() {
+  return {
+    input: [{ bands: ["B04", "B08", "dataMask"] }],
+    output: { bands: 1, sampleType: "FLOAT32" }
+  };
+}
+function evaluatePixel(sample) {
+  if (sample.dataMask === 0) { return [NaN]; } // Ignoruje pixely bez dát
+  let ndvi = (sample.B08 - sample.B04) / (sample.B08 + sample.B04);
+  return [ndvi];
+}
+```
 
-## 4. File Structure & Path to Bands
+*   **Výhody:**
+    *   **Efektivita:** Sťahujú sa len výsledné NDVI dáta (malý objem), nie celé 1.2 GB scény.
+    *   **Automatizácia:** Celý proces je riadený kódom.
+    *   **Mozaikovanie:** API automaticky vyberá najlepšie scény (najmenej oblakov) a spája ich do jednej mapy.
 
-Inside the unzipped `.SAFE` folder, navigate to the 10m resolution bands:
+---
 
-**Path:**
+## 2. Alternatívna Metóda: Manuálne Sťahovanie (pre prieskum)
+
+Nižšie popísaný postup manuálneho sťahovania je stále platný a užitočný pre prieskum dát, overovanie alebo ak by bolo potrebné pracovať s celými scénami lokálne.
+
+*   **Platforma:** [Copernicus Browser](https://dataspace.copernicus.eu/browser)
+*   **Login:** Vyžadovaný pre sťahovanie.
+
+### Filtre pre vyhľadávanie
+
+*   **Location:** `Trnava, Slovakia`
+*   **Data Source:** `Sentinel-2`
+*   **Product Level:** `L2A` (Level-2A, atmosféricky korigované)
+*   **Cloud Cover:** `0% - 20%`
+*   **Time Range:** napr. `2023-06-01` to `2023-08-31`
+
+### Proces sťahovania
+
+1.  **Visualize:** Skontrolujte náhľad, či Trnava nie je pod oblakmi.
+2.  **Download:** Kliknite na "Download". Súbor bude mať formát `.zip`.
+3.  **Extraction:** Rozbaľte archív, čím získate priečinok `.SAFE`.
+
+### Štruktúra súborov a kľúčové pásma
+
+V rámci `.SAFE` priečinka sú najdôležitejšie pásma v 10m rozlíšení tu:
 `./[SAFE_NAME].SAFE/GRANULE/[GRANULE_NAME]/IMG_DATA/R10m/`
 
-**Key Files (10m Resolution):**
+*   `*_B04_10m.jp2` -> **Red** (Červené pásmo - kľúčové pre NDVI)
+*   `*_B08_10m.jp2` -> **NIR** (Blízke infračervené pásmo - kľúčové pre NDVI)
+*   `*_B03_10m.jp2` -> **Green** (Zelené pásmo - kľúčové pre NDWI)
 
-* `*_B02_10m.jp2` -> **Blue** (Water bodies)
-* `*_B03_10m.jp2` -> **Green** (Vegetation peak)
-* [cite_start]`*_B04_10m.jp2` -> **Red** (Vegetation absorption - crucial for NDVI) [cite: 98]
-* [cite_start]`*_B08_10m.jp2` -> **NIR** (Near-Infrared - crucial for NDVI) [cite: 98]
+---
 
-## 5. Optimization Tips (Hackathon Mode)
+## 3. Vzorce pre Indexy (Použité v Projekte)
 
-* **RAM Warning:** The full image covers 100x100km. [cite_start]Do not load the whole file if you have limited
-  RAM. [cite: 92]
-* [cite_start]**Subsetting:** Use a GeoJSON mask to crop the data to Trnava only. [cite: 93]
-    * Tool: [geojson.io](https://geojson.io) -> Draw polygon around Trnava -> Save as `trnava.geojson`.
-* **Cloud Masking:** If clouds are present, use the Scene Classification Layer (SCL) found in `IMG_DATA/R20m/` to mask
-  them out.
+*   **NDVI (Normalized Difference Vegetation Index):** Používa sa na meranie zdravia a hustoty vegetácie.
+    *   Vzorec: `(B08 - B04) / (B08 + B04)`
 
-## 6. Common Indices Formulas (Python/Numpy)
-
-* [cite_start]**NDVI (Vegetation):** `(B08 - B04) / (B08 + B04)` [cite: 99]
-* [cite_start]**NDWI (Water):** `(B03 - B08) / (B03 + B08)` [cite: 9]
+*   **NDWI (Normalized Difference Water Index):** Používa sa na identifikáciu vodných plôch.
+    *   Vzorec: `(B03 - B08) / (B03 + B08)`
+    *   *Poznámka: Tento index bol v pôvodných návrhoch, ale finálny projekt ho nevyužíva.*
