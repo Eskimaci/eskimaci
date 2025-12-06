@@ -115,7 +115,7 @@ with open('static/geojson/rybniky.geojson' , 'r') as geojsonFile:
     geojsonData = json.load(geojsonFile)
     rybniky = park("Rybníky", geojsonData['features'][0]['geometry']['coordinates'][0])
 
-zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast, nemocnicnyPark]
+zelenePlochy = [parkJankaKrala, bernolakovPark, ruzovyPark, strky, kamenac, parkZaDruzbou, zahradkarskaOblast, nemocnicnyPark, rybniky]
 
 # Výstupné parametre
 OUTPUT_SIZE = [1000, 1000]
@@ -271,7 +271,7 @@ def main():
     all_values = []  # Pre výpočet správnych limitov grafu
     
     # Vyberieme prvý park pre porovnanie rokov
-    selected_park = zelenePlochy[0]  # Defaultne prvý park, môžete zmeniť index
+    selected_park = zelenePlochy[8]  # Defaultne prvý park, môžete zmeniť index
     
     aoi_geometry = Geometry(
         geometry={"type": "Polygon", "coordinates": [selected_park.suradnice]},
