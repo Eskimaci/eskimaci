@@ -1,12 +1,11 @@
 import csv
-import numpy as np
 
 with open('static/pollenAverageLoads.csv', newline="") as csvfile:
     reader = csv.reader(csvfile)
     data = list(reader)
 print(data)
 
-x = 4
+y = 4
 pocetRokov = 366
 
 
@@ -21,6 +20,6 @@ with open("static/pollenAverageLoads.csv1", "w", newline="",
 
     for i in range(1, pocetRokov-1):
         row = [row_names[i]]
-        for rok in range(1, x):
+        for rok in range(1, y):
             row.append(data[rok][i])
         writer.writerow(row)
