@@ -166,28 +166,29 @@ def generate_trend_map(years_to_analyze, target_month_start, target_month_end):
         f"DEBUG: Štatistiky mapy trendov - Min: {np.nanmin(trend_map):.4f}, Max: {np.nanmax(trend_map):.4f}, Priemer: {np.nanmean(trend_map):.4f}")
 
     print("Vytváram a ukladám mapu trendu...")
-    cmap_trend = LinearSegmentedColormap.from_list("trend_map", [(0, "red"), (0.5, "white"), (1, "green")])
-    plt.figure(figsize=(12, 10))
+    with plt.style.context('default'):
+        cmap_trend = LinearSegmentedColormap.from_list("trend_map", [(0, "red"), (0.5, "white"), (1, "green")])
+        plt.figure(figsize=(12, 10))
 
-    # Ignorujeme NaN pri výpočte percentilu
-    vlim = np.nanpercentile(np.abs(trend_map), 98)
-    if vlim == 0: vlim = 1.0
+        # Ignorujeme NaN pri výpočte percentilu
+        vlim = np.nanpercentile(np.abs(trend_map), 98)
+        if vlim == 0: vlim = 1.0
 
-    img = plt.imshow(trend_map, cmap=cmap_trend, vmin=-vlim, vmax=vlim)
-    plt.colorbar(img, label="Sklon trendu NDVI (zmena za rok)")
-    plt.title(f"Trend vývoja vegetácie v Trnave ({valid_years[0]}-{valid_years[-1]})")
-    plt.xlabel("Pixel X")
-    plt.ylabel("Pixel Y")
+        img = plt.imshow(trend_map, cmap=cmap_trend, vmin=-vlim, vmax=vlim)
+        plt.colorbar(img, label="Sklon trendu NDVI (zmena za rok)")
+        plt.title(f"Trend vývoja vegetácie v Trnave ({valid_years[0]}-{valid_years[-1]})")
+        plt.xlabel("Pixel X")
+        plt.ylabel("Pixel Y")
 
-    # Uloženie do statickej zložky
-    output_dir = "static/output"
-    os.makedirs(output_dir, exist_ok=True)
+        # Uloženie do statickej zložky
+        output_dir = "static/output"
+        os.makedirs(output_dir, exist_ok=True)
 
-    filename = f"ndvi_trend_trnava_{valid_years[0]}_{valid_years[-1]}_{target_month_start}_{target_month_end}.png"
-    output_filepath = os.path.join(output_dir, filename)
+        filename = f"ndvi_trend_trnava_{valid_years[0]}_{valid_years[-1]}_{target_month_start}_{target_month_end}.png"
+        output_filepath = os.path.join(output_dir, filename)
 
-    plt.savefig(output_filepath, dpi=150)  # Znížené DPI pre rýchlejšie generovanie
-    plt.close()  # Uvoľnenie pamäte
+        plt.savefig(output_filepath, dpi=150)  # Znížené DPI pre rýchlejšie generovanie
+        plt.close()  # Uvoľnenie pamäte
 
     print(f"✅ Mapa trendu úspešne uložená ako: {output_filepath}")
     return output_filepath
