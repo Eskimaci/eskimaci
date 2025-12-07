@@ -10,7 +10,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 
 from source.long_term_analysis_trnava import generate_trend_map
 
-# --- 1. NASTAVENIE APLIKÁCIE ---
+# --- 1. NASTAVENIE APLIKÁCIE FLASK ---
 app = Flask(__name__, static_folder='static')
 logging.basicConfig(level=logging.INFO)
 
