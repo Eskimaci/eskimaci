@@ -170,9 +170,12 @@ fig.autofmt_xdate()
 min_length = min(len(data[i]) for i in range(len(years)))
 
 combined_df = pd.DataFrame()
-combined_df['date'] = data[0]['date'].iloc[:min_length].reset_index(drop=True)
+
+# ZMENA JE TU: Pridali sme .dt.date
+# Toto oreže časovú zložku a nechá len dátum (YYYY-MM-DD)
+combined_df['date'] = data[0]['date'].iloc[:min_length].dt.date.reset_index(drop=True)
 
 for i, year in enumerate(years):
     combined_df[f'Rok {year}'] = data[i]['temperature_2m_mean'].iloc[:min_length].reset_index(drop=True)
 
-combined_df.to_csv('static/temperature_comparison.csv', index=False)
+combined_df.to_csv('../static/temperature_comparison.csv', index=False)
