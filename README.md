@@ -118,4 +118,4 @@ Aplikácia bude dostupná na adrese [**http://127.0.0.1:5001**](http://127.0.0.1
 ---
 > ### 💡 Poznámka k dátovým skriptom
 >
-> V adresári `source/` sa nachádzajú skripty (`getMeteoData.py`, `long_term_analysis.py`, `interpolacia.py` atď.), ktoré slúžia na **manuálnu prípravu dát**. Tieto skripty sa nespúšťajú automaticky a nie sú potrebné pre bežnú prevádzku aplikácie, pokiaľ používate dáta, ktoré sú už v repozitári. Spúšťajú sa iba v prípade, že potrebujete stiahnuť a spracovať úplne nové dáta (napr. pre iné roky alebo lokality). Viac detailov nájdete v [Technickej dokumentácii](DOCS.md).
+> V adresári `source/` sa nachádzajú skripty (`getMeteoData.py`, `long_term_analysis.py`, `interpolacia.py` atď.), ktoré slúžia na **manuálnu prípravu dát**. Tieto skripty sa nespúšťajú automaticky a nie sú potrebné pre bežnú prevádzku aplikácie, pokiaľ používate dáta, ktoré sú už v repozitári. Spúšťajú sa iba v prípade, že potrebujete stiahnuť a spracovať úplne nové dáta (napr. pre iné roky alebo lokality). Viac detailov nájdete v [Technickej dokumentácii](docs/DOCUMENTATION.md).
