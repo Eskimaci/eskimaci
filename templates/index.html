@@ -337,6 +337,9 @@
             gap: 12px;
             margin-bottom: 16px;
         }
+        option{
+            background-color: var(--bg-elevated);
+        }
     </style>
 </head>
 <body>
@@ -362,8 +365,9 @@
                 <span>Trnava · Analýza peľových sezón</span>
             </div>
             <div class="button-flexbox">
-                <button class="primary load-veg-btn">Zmena vegetácia</button>
+                <button class="primary load-veg-btn">Zmena vegetácie</button>
                 <button class="primary load-pollen-btn">Nástup peľovej sezóny</button>
+                <button class="primary load-curr-poll-btn">Aktuálna peľová situácia</button>
             </div>
             <div class="content-div">
 
@@ -433,7 +437,7 @@
         contentDiv.innerHTML = `
                <h1 class="hero-title">Nástup peľovej sezóny</h1>
                 <p class="hero-subtitle">
-                    Analyzujte zmeny vegetácie počas peľových sezón v Trnave v rôznych oblastiach. Vyberte roky, aby ste zistili, ako sa mení množstvo zelene, čo môže indikovať intenzitu peľových alergénov.
+                    Analyzujte zmeny vegetácie počas peľových sezón v Trnave v rôznych oblastiach. Vyberte oblasť, aby ste zistili, ako sa mení množstvo zelene, čo môže indikovať intenzitu peľových alergénov.
                 </p>
 
                 <div class="hero-controls">
@@ -459,6 +463,34 @@
                 <section id="results" class="results-section">
                     <div class="placeholder-text">Výsledná mapa trendu sa zobrazí tu.</div>
                 </section>`;
+    }
+
+    async function loadCurrentPollen(contentDiv) {
+        contentDiv.innerHTML = `
+               <h1 class="hero-title">Aktuálna peľová situácia</h1>
+                <p class="hero-subtitle">
+                    Aktuálne koncentrácie peľu sú tu zobrazené v porovnaní s dlhodobým priemerom. Keďže analýza peľových údajov je zložitá a časovo náročná, nie je možné ju zobraziť v reálnom čase. Grafy budú aktualizované, keď budú k dispozícii nové údaje.
+                </p>
+                <section id="results austria-graph" class="results-section">
+                    
+                </section>`;
+
+        // Load the Austria pollen graph
+        try{
+            const response = await fetch('/api/current_pollen');
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+            }
+            const resultsSection = document.getElementById('results austria-graph');
+            if (resultsSection) {
+                const url = `${data.image_url}?t=${new Date().getTime()}`;
+                resultsSection.innerHTML = `<p>Test</p>`;
+            }
+        }catch(error){
+            console.error('Error loading current pollen data:', error);
+            showError(`Chyba pri načítaní aktuálnych peľových údajov: ${error.message}`);
+        }
     }
 
     const content = document.querySelector('.content-div');
@@ -493,6 +525,11 @@
         attachPollenListeners();
     });
 
+    const currPollenBtn = document.querySelector('.load-curr-poll-btn');
+    currPollenBtn.addEventListener('click', () => {
+        loadCurrentPollen(content);
+    });
+
     function attachVegetationListeners() {
         const analyzeBtn = document.getElementById('analyze-btn');
         const seasonSelect = document.getElementById('season-select');
@@ -512,6 +549,8 @@
             analyzePolenBtn.addEventListener('click', handlePollenAnalysis);
         }
     }
+
+
 
     // Populácia rokov ako checkboxy
     function populateYearCheckboxes(yearContainer) {

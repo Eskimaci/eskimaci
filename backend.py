@@ -172,6 +172,23 @@ def analyze():
     except Exception as e:
         app.logger.error(f"Nastala neočakávaná chyba v /api/analyze: {e}", exc_info=True)
         return jsonify({"error": f"Interná chyba servera: {e}"}), 500
+    
+@app.route('/api/current_pollen', methods=['GET'])
+def current_pollen():
+    """API endpoint na získanie aktuálnych dát o peľových koncentráciách."""
+    try:
+        # Cesta k súboru s aktuálnymi dátami
+        data_file = 'static/pollenAverageLoads.csv'
+        
+        if not os.path.exists(data_file):
+            return jsonify({"error": "Súbor s aktuálnymi dátami nebol nájdený."}), 404
+
+        # Načítanie dát zo súboru
+    
+    except Exception as e:
+        app.logger.error(f"Nastala chyba pri načítaní aktuálnych peľových dát: {e}", exc_info=True)
+        return jsonify({"error": f"Interná chyba servera: {e}"}), 500
+
 
 
 # --- 3. SPUSTENIE SERVERA ---
