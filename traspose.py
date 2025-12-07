@@ -6,10 +6,8 @@ with open('static/pollenAverageLoads.csv', newline="") as csvfile:
     data = list(reader)
 print(data)
 
-pocetx = 4
+x = 4
 pocetRokov = 366
-odseknut = 0.4
-x_hodnoty = np.arange(0, pocetx)
 
 
 header = [data[0][0], data[1][0], data[2][0], data[3][0]]
@@ -23,6 +21,6 @@ with open("static/pollenAverageLoads.csv1", "w", newline="",
 
     for i in range(1, pocetRokov-1):
         row = [row_names[i]]
-        for rok in range(1, pocetx):
+        for rok in range(1, x):
             row.append(data[rok][i])
         writer.writerow(row)
