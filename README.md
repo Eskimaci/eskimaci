@@ -111,7 +111,7 @@ flask --app backend run --debug
 ```
 alebo priamo:
 ```bash
-python3 backend.py
+python3 manage.py
 ```
 
 Aplikácia bude dostupná na adrese [**http://127.0.0.1:5001**](http://127.0.0.1:5001).

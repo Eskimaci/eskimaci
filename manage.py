@@ -8,7 +8,7 @@ import plotly.graph_objs as go
 import plotly.utils
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
-from long_term_analysis_trnava import generate_trend_map
+from source.long_term_analysis_trnava import generate_trend_map
 
 # --- 1. NASTAVENIE APLIKÁCIE ---
 app = Flask(__name__, static_folder='static')
