@@ -105,14 +105,25 @@ const pollenInfo = {
     year: "Analýza pre celý kalendárny rok."
 };
 
+// Function to switch methodology visibility
+function updateMethodology(activeId) {
+    const methodologies = document.querySelectorAll('.metodika-content');
+    methodologies.forEach(method => {
+        if (method.id === activeId) {
+            method.style.display = 'block';
+        } else {
+            method.style.display = 'none';
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Load vegetation analysis by default on page load
     loadVegetaciu(content);
     let yearContainer = document.getElementById('year-checkbox-container');
     populateYearCheckboxes(yearContainer);
-
-    // Attach event listeners for initial load
     attachVegetationListeners();
+    updateMethodology('metodika-vegetacia'); // Show default methodology
 
     const vegBtn = document.querySelector('.load-veg-btn');
     vegBtn.addEventListener('click', () => {
@@ -120,17 +131,20 @@ document.addEventListener('DOMContentLoaded', () => {
         yearContainer = document.getElementById('year-checkbox-container');
         populateYearCheckboxes(yearContainer);
         attachVegetationListeners();
+        updateMethodology('metodika-vegetacia');
     });
 
     const pollenBtn = document.querySelector('.load-pollen-btn');
     pollenBtn.addEventListener('click', () => {
         loadPollenSeason(content);
         attachPollenListeners();
+        updateMethodology('metodika-sezona');
     });
 
     const currPollenBtn = document.querySelector('.load-curr-poll-btn');
     currPollenBtn.addEventListener('click', () => {
         loadCurrentPollen(content);
+        updateMethodology('metodika-pollen');
     });
 });
 

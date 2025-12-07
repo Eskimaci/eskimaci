@@ -45,16 +45,34 @@
                 <h2 class="card-title">Metodika</h2>
             </div>
             <div class="card-body">
-                <p>
-                    Využívame voľne dostupné dáta z programu Copernicus (satelity Sentinel-2, L2A). Pre každý zvolený
-                    rok a obdobie sa stiahnu snímky s najnižšou oblačnosťou. Z pásiem B8 (blízke infračervené) a B4
-                    (červené) sa vypočíta NDVI, ktorý je dobrým indikátorom množstva a zdravia vegetácie. Následne sa
-                    pomocou lineárnej regresie vypočíta trend pre každý pixel na mape.
-                </p>
-                <p>
-                    Výsledkom je mapa, kde <strong>zelená farba</strong> indikuje pribúdanie vegetácie (potenciálne viac
-                    alergénov), <strong>červená</strong> úbytok a <strong>biela</strong> stabilný stav.
-                </p>
+                <div id="metodika-vegetacia" class="metodika-content">
+                    <p>
+                        Využívame voľne dostupné dáta z programu Copernicus (satelity Sentinel-2, L2A). Pre každý zvolený
+                        rok a obdobie sa stiahnu snímky s najnižšou oblačnosťou. Z pásiem B8 (blízke infračervené) a B4
+                        (červené) sa vypočíta NDVI, ktorý je dobrým indikátorom množstva a zdravia vegetácie. Následne sa
+                        pomocou lineárnej regresie vypočíta trend pre každý pixel na mape.
+                    </p>
+                    <p>
+                        Výsledkom je mapa, kde <strong>zelená farba</strong> indikuje pribúdanie vegetácie (potenciálne viac
+                        alergénov), <strong>červená</strong> úbytok a <strong>biela</strong> stabilný stav.
+                    </p>
+                </div>
+                <div id="metodika-sezona" class="metodika-content" style="display: none;">
+                    <p>
+                        Táto analýza porovnáva dáta z dvoch zdrojov: pred-spracovaný vegetačný index (NDVI) pre konkrétne parky v Trnave a historické teplotné dáta pre Trnavu z Open-Meteo API. Cieľom je vizuálne identifikovať prepojenie medzi nástupom vyšších teplôt a začiatkom vegetačnej aktivity.
+                    </p>
+                    <p>
+                        Grafy zobrazujú priebeh NDVI a teploty pre viacero rokov naraz, čo umožňuje porovnať, či sa "prebúdzanie" prírody posúva v čase. Graf tiež zvýrazňuje prvú periódu, kedy teplota prekročila 5°C po dobu 5 po sebe idúcich dní, čo je považované za jeden z míľnikov pre štart vegetačnej sezóny.
+                    </p>
+                </div>
+                <div id="metodika-pollen" class="metodika-content" style="display: none;">
+                     <p>
+                        Tento graf zobrazuje dáta o priemernej peľovej záťaži z externých zdrojov, ktoré sú spracované a uložené v súbore <code>pollenAverageLoads.csv</code>. Nejde o dáta v reálnom čase, ale o súhrn nameraných hodnôt za posledné obdobie.
+                    </p>
+                    <p>
+                        Graf slúži na informatívny prehľad o aktuálnej situácii a koncentrácii hlavných peľových alergénov v ovzduší. Keďže zber a analýza peľových dát je zložitý proces, dáta sú aktualizované s určitým oneskorením.
+                    </p>
+                </div>
             </div>
         </article>
     </main>
