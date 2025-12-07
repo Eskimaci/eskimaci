@@ -629,8 +629,8 @@
         }
     }
 
-    function rednerPollenPlots(pollenGraphs){
-        const resultsSection = document.getElementById('results');
+    function renderPollenPlots(pollenGraphs){
+        const resultsSection = document.getElementById('results austria-graph');
         if (!resultsSection) return;
 
         resultsSection.innerHTML = `
@@ -639,7 +639,7 @@
 
         // Pollen Plot Layout
         const pollenLayout = {
-            title: 'Aktuálna peľová situácia v porovnaní s dlhodobým priemerom',
+            title: 'Aktuálna peľová situácia v tomto roku',
             xaxis: {
                 title: 'Dátum',
                 type: 'category',
