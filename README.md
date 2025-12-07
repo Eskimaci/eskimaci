@@ -23,11 +23,14 @@ Aplikácia poskytuje dva hlavné analytické nástroje:
 ## Štruktúra projektu
 
     .
-    ├── backend.py              # Hlavný Flask server (API)
-    ├── getMeteoData.py         # Skript na stiahnutie teplotných dát
-    ├── long_term_analysis_trnava.py # Skript pre celoplošnú analýzu trendu
+    ├── manage.py               # Hlavný Flask server (API)
     ├── requirements.txt        # Zoznam Python knižníc
     ├── DOCS.md                 # Technická dokumentácia
+    ├── source/                 # Skripty na prípravu a analýzu dát
+    │   ├── long_term_analysis_trnava.py # Skript pre celoplošnú analýzu trendu
+    │   ├── long_term_analysis.py # Skript pre sťahovanie NDVI dát pre parky
+    │   ├── getMeteoData.py     # Skript na stiahnutie teplotných dát
+    │   └── ...                 # Ďalšie pomocné skripty
     ├── static/                 # Frontend (CSS, JS) a dáta (CSV, GeoJSON)
     │   ├── js/main.js          # Hlavná logika frontendu
     │   ├── csv_interpol_lin/   # Spracované dáta pre grafy
@@ -58,7 +61,7 @@ source venv/bin/activate
 ```
 
 ### 3. Konfigurácia API prístupu
-Pre fungovanie dynamickej analýzy trendu je potrebný prístup k Sentinel Hub.
+Pre fungovanie dynamickej analýzy trendu a sťahovanie nových dát je potrebný prístup k Sentinel Hub.
 
 1.  Vytvorte si bezplatný účet na [**Copernicus Dataspace Ecosystem**](https://dataspace.copernicus.eu/).
 2.  Vytvorte si *OAuth Client* v dashboarde a získajte `Client ID` a `Client Secret`.
@@ -104,12 +107,8 @@ Inštalácia niektorých geo-knižníc (napr. `rasterio`) môže byť zložitá 
 </details>
 
 ### 5. Spustenie aplikácie
-Po aktivácii prostredia a inštalácii spustite Flask server:
+Po aktivácii prostredia a inštalácii spustite server príkazom:
 
-```bash
-flask --app backend run --debug
-```
-alebo priamo:
 ```bash
 python3 manage.py
 ```
@@ -117,6 +116,6 @@ python3 manage.py
 Aplikácia bude dostupná na adrese [**http://127.0.0.1:5001**](http://127.0.0.1:5001).
 
 ---
-> ### 💡 Poznámka k pomocným skriptom
+> ### 💡 Poznámka k dátovým skriptom
 >
-> V repozitári sa nachádzajú aj ďalšie skripty (`getMeteoData.py`, `interpolacia.py`, `createGeojson.py`). Tieto slúžili na **jednorazovú prípravu statických dát** (CSV a GeoJSON súbory) a nie je nutné ich spúšťať pre bežnú prevádzku aplikácie. Pre viac detailov si pozrite [Technickú dokumentáciu](DOCS.md).
+> V adresári `source/` sa nachádzajú skripty (`getMeteoData.py`, `long_term_analysis.py`, `interpolacia.py` atď.), ktoré slúžia na **manuálnu prípravu dát**. Tieto skripty sa nespúšťajú automaticky a nie sú potrebné pre bežnú prevádzku aplikácie, pokiaľ používate dáta, ktoré sú už v repozitári. Spúšťajú sa iba v prípade, že potrebujete stiahnuť a spracovať úplne nové dáta (napr. pre iné roky alebo lokality). Viac detailov nájdete v [Technickej dokumentácii](DOCS.md).
