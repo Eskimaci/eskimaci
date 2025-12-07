@@ -12,9 +12,10 @@ Tento skript vykonáva nasledujúce kroky:
 """
 
 import os
+
+import matplotlib
 import numpy as np
 from decouple import config
-import matplotlib
 
 matplotlib.use('Agg')  # Must be before importing pyplot to prevent crash on macOS
 import matplotlib.pyplot as plt
