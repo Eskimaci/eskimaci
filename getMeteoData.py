@@ -7,7 +7,7 @@ import pandas as pd
 import requests_cache
 from retry_requests import retry
 
-matplotlib.use("TkAgg")
+matplotlib.use("Agg")
 
 # Setup the Open-Meteo API client with cache and retry on error
 cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
@@ -18,8 +18,8 @@ openmeteo = openmeteo_requests.Client(session=retry_session)
 # The order of variables in hourly or daily is important to assign them correctly below
 url = "https://archive-api.open-meteo.com/v1/archive"
 params = {
-    "latitude": 52.52,
-    "longitude": 13.41,
+    "latitude": 48.3860,
+    "longitude": 17.5724,
     "start_date": "2020-01-01",
     "end_date": "2025-12-04",
     "daily": "temperature_2m_mean",
@@ -175,6 +175,4 @@ combined_df['date'] = data[0]['date'].iloc[:min_length].reset_index(drop=True)
 for i, year in enumerate(years):
     combined_df[f'Rok {year}'] = data[i]['temperature_2m_mean'].iloc[:min_length].reset_index(drop=True)
 
-combined_df.to_csv('temperature_comparison.csv', index=False)
-
-plt.show()
+combined_df.to_csv('static/temperature_comparison.csv', index=False)

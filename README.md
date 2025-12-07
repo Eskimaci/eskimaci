@@ -1,124 +1,122 @@
-# 🚀 Projekt: Analýza mestskej zelene v Trnave
+# Projekt: Analýza mestskej zelene v Trnave
 
-**Cieľ:** Webová aplikácia pre analýzu a vizualizáciu dlhodobých trendov vegetácie (NDVI) v Trnave pomocou dát zo Sentinel-2 a porovnanie s teplotnými dátami.
-
-**Platforma:** Python 3.13, Flask
+Webová aplikácia pre analýzu a vizualizáciu dlhodobých trendov vegetácie (NDVI) v Trnave. Projekt využíva satelitné dáta zo Sentinel-2 a porovnáva ich s lokálnymi teplotnými dátami na identifikáciu zmien v ekosystéme.
 
 ---
 
-## 1. Architektúra a Funkcionalita
+## Kľúčové funkcie
 
-Aplikácia má dve hlavné funkcie:
+Aplikácia poskytuje dva hlavné analytické nástroje:
 
-1.  **Dynamická analýza trendu vegetácie:** Používateľ si môže zvoliť obdobie (roky a sezónu) a aplikácia naživo vygeneruje mapu, ktorá ukazuje, ako sa zeleň v Trnave dlhodobo mení (zlepšuje/zhoršuje). Využíva priame pripojenie na **Sentinel Hub API**.
-2.  **Porovnávacie grafy:** Pre vybrané parky v Trnave aplikácia zobrazuje interaktívne grafy, ktoré porovnávajú vývoj NDVI a teplôt v priebehu rokov 2020-2025.
+1.  **Dynamická analýza trendu vegetácie**:
+    -   Používateľ si môže zvoliť ľubovoľné roky (od 2017) a peľovú sezónu.
+    -   Aplikácia naživo stiahne dáta z **Sentinel Hub API** a vygeneruje mapu, ktorá farebne vizualizuje, či sa zeleň v celej Trnave dlhodobo zlepšuje (zelená), zhoršuje (červená) alebo stagnuje (biela).
+    -   Tento nástroj je ideálny na sledovanie celoplošných zmien a dopadov klimatických zmien alebo urbanizácie.
 
-**UPOZORNENIE:** Analýza odhalila, že zatiaľ čo NDVI dáta sú korektne z Trnavy, teplotné dáta v porovnávacom grafe pochádzajú z lokality v Berlíne, Nemecko.
+2.  **Porovnanie nástupu peľovej sezóny**:
+    -   Pre vybrané parky a zelené plochy v Trnave aplikácia zobrazuje interaktívne grafy.
+    -   Grafy porovnávajú vývoj vegetačného indexu (NDVI) a priemerných teplôt v priebehu rokov 2020-2025.
+    -   Umožňuje identifikovať, či teplejšie zimy spôsobujú skorší nástup vegetačnej sezóny, čo priamo súvisí so začiatkom peľových alergií.
 
 ---
 
-## 2. Inštalácia Prostredia
+## Štruktúra projektu
 
-### A. Klonovanie repozitára
+    .
+    ├── backend.py              # Hlavný Flask server (API)
+    ├── getMeteoData.py         # Skript na stiahnutie teplotných dát
+    ├── long_term_analysis_trnava.py # Skript pre celoplošnú analýzu trendu
+    ├── requirements.txt        # Zoznam Python knižníc
+    ├── DOCS.md                 # Technická dokumentácia
+    ├── static/                 # Frontend (CSS, JS) a dáta (CSV, GeoJSON)
+    │   ├── js/main.js          # Hlavná logika frontendu
+    │   ├── csv_interpol_lin/   # Spracované dáta pre grafy
+    │   └── output/             # Vygenerované mapy trendu
+    └── templates/
+        └── index.html          # Hlavná HTML šablóna
+
+---
+
+## Inštalácia a spustenie
+
+### 1. Klonovanie repozitára
 ```bash
-git clone <https://github.com/Eskimaci/eskimaci.git>
+git clone https://github.com/Eskimaci/eskimaci.git
 cd eskimaci
 ```
 
-### B. Python a Virtuálne Prostredie
-Uistite sa, že máte nainštalovaný Python 3.13.
+### 2. Vytvorenie a aktivácia virtuálneho prostredia
+Uistite sa, že máte nainštalovaný Python 3.11 alebo novší.
 
 ```bash
 # Vytvorenie virtuálneho prostredia
 python3 -m venv venv
 
-# Aktivácia prostredia
-# macOS/Linux:
+# Aktivácia prostredia (macOS/Linux)
 source venv/bin/activate
-# Windows:
-# venv\Scripts\activate
+# Pre Windows: venv\Scripts\activate
 ```
 
-### C. Inštalácia Knižníc
-Všetky potrebné knižnice sú v súbore `requirements.txt`. Nainštalujte ich príkazom:
+### 3. Konfigurácia API prístupu
+Pre fungovanie dynamickej analýzy trendu je potrebný prístup k Sentinel Hub.
+
+1.  Vytvorte si bezplatný účet na [**Copernicus Dataspace Ecosystem**](https://dataspace.copernicus.eu/).
+2.  Vytvorte si *OAuth Client* v dashboarde a získajte `Client ID` a `Client Secret`.
+3.  V hlavnom priečinku projektu vytvorte súbor s názvom `.env`.
+4.  Do súboru `.env` vložte svoje prístupové údaje:
+    ```env
+    CLIENT_ID="vas-client-id"
+    CLIENT_SECRET="vas-client-secret"
+    ```
+
+### 4. Inštalácia závislostí
+Všetky potrebné knižnice sú v súbore `requirements.txt`.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-#### ⚠️ Poznámky pre jednotlivé OS
-Inštalácia niektorých geovedeckých knižníc (`rasterio`, `geopandas`) môže byť zložitá kvôli ich závislosti na C++ knižnici GDAL.
+<details>
+<summary>⚠️ Poznámky k inštalácii pre rôzne OS</summary>
+
+Inštalácia niektorých geo-knižníc (napr. `rasterio`) môže byť zložitá kvôli ich systémovým závislostiam (knižnica GDAL).
 
 *   **🪟 Windows:**
-    *   Priama inštalácia cez `pip` s veľkou pravdepodobnosťou zlyhá, ak nemáte správne nainštalované a nakonfigurované GDAL.
-    *   **Odporúčaný postup:** Nainštalujte tieto knižnice pomocou manažéra balíčkov `conda` (z prostredia Anaconda/Miniconda), ktorý sa postará o všetky závislosti:
+    *   Priama inštalácia cez `pip` môže zlyhať. Odporúča sa použiť `conda` (z prostredia Anaconda/Miniconda), ktorá nainštaluje všetko potrebné automaticky:
         ```bash
         conda install -c conda-forge geopandas rasterio
         ```
-    *   Až potom spustite `pip install -r requirements.txt` na doinštalovanie ostatných závislostí.
+    *   Až potom spustite `pip install -r requirements.txt`.
 
 *   **🍎 macOS:**
-    *   Inštalácia by mala byť jednoduchšia. Ak narazíte na problém s GDAL, nainštalujte ho cez Homebrew:
+    *   Najprv nainštalujte GDAL cez Homebrew:
         ```bash
         brew install gdal
         ```
-    *   Následne by mal príkaz `pip install -r requirements.txt` fungovať korektne.
+    *   Následne by mal príkaz `pip install -r requirements.txt` fungovať správne.
 
 *   **🐧 Linux (Debian/Ubuntu):**
-    *   Pred inštaláciou sa uistite, že máte nainštalované vývojárske hlavičky pre GDAL:
+    *   Nainštalujte vývojárske hlavičky pre GDAL:
         ```bash
         sudo apt-get update && sudo apt-get install libgdal-dev
         ```
-    *   Potom by mala inštalácia cez `pip` prebehnúť bez problémov.
+    *   Potom pokračujte s `pip install`.
+</details>
 
-#### Kľúčové knižnice v projekte:
-- **[Flask](https://flask.palletsprojects.com/):** Mikro-framework, na ktorom beží backend aplikácie.
-- **[sentinelhub](https://sentinelhub-py.readthedocs.io/):** Oficiálna knižnica pre priame sťahovanie a spracovanie dát zo Sentinel Hub API. Jadro dynamickej analýzy.
-- **[openmeteo_requests](https://pypi.org/project/openmeteo-requests/):** Knižnica na sťahovanie historických dát o počasí.
-- **[numpy](https://numpy.org/):** Základ pre numerické výpočty, najmä pre prácu s rastrovými dátami (NDVI) a výpočet trendu.
-- **[pandas](https://pandas.pydata.org/) & [geopandas](https://geopandas.org/):** Nástroje na manipuláciu s dátovými tabuľkami a geo-dátami.
-- **[matplotlib](https://matplotlib.org/):** Vykresľovanie finálnej mapy trendu.
-- **[plotly](https://plotly.com/python/):** Generovanie interaktívnych grafov vo webovom rozhraní.
-- **[python-decouple](https://pypi.org/project/python-decouple/):** Načítavanie citlivých premenných (API kľúče) zo súboru.
-
----
-
-## 3. Konfigurácia API Prístupu
-
-Pre fungovanie dynamickej analýzy (Funkcionalita 1) je potrebné získať prístupové údaje k Sentinel Hub.
-
-1.  Vytvorte si účet na [**Copernicus Dataspace Ecosystem**](https://dataspace.copernicus.eu/).
-2.  Vytvorte si OAuth Client v dashboarde a získajte `Client ID` a `Client Secret`.
-3.  V hlavnom priečinku projektu vytvorte súbor s názvom `.env`
-4.  Do súboru `.env` vložte svoje prístupové údaje v nasledovnom formáte:
-
-```
-CLIENT_ID=vas_client_id
-CLIENT_SECRET=vas_client_secret
-```
-
----
-
-## 4. Spustenie Aplikácie
-
-Po aktivácii virtuálneho prostredia a nainštalovaní knižníc spustite Flask server:
+### 5. Spustenie aplikácie
+Po aktivácii prostredia a inštalácii spustite Flask server:
 
 ```bash
 flask --app backend run --debug
 ```
-Alebo alternatívne:
+alebo priamo:
 ```bash
-python backend.py
+python3 backend.py
 ```
 
-Aplikácia bude dostupná na adrese `http://127.0.0.1:5001`.
+Aplikácia bude dostupná na adrese [**http://127.0.0.1:5001**](http://127.0.0.1:5001).
 
 ---
-> ### 💡 Poznámka k ostatným skriptom
+> ### 💡 Poznámka k pomocným skriptom
 >
-> V repozitári sa nachádzajú aj ďalšie skripty (`getMeteoData.py`, `interpolacia.py`, `createGeojson.py`), ktoré nie sú priamo súčasťou Flask aplikácie. Tieto slúžili na jednorazovú prípravu a spracovanie statických dát (CSV a GeoJSON súbory), ktoré aplikácia využíva pre porovnávacie grafy. Nie je nutné ich spúšťať pre bežnú prevádzku aplikácie.
->
-> #### Poznámka k Matplotlib Backendu
-> Hlavná webová aplikácia (spúšťaná cez `backend.py`) používa `matplotlib.use('Agg')`, čo je neinteraktívny backend, ktorý ukladá obrázky do súborov bez potreby grafického rozhrania. To zaručuje bezproblémový beh na akomkoľvek serverovom prostredí (Windows, macOS, Linux).
->
-> Naopak, pomocné skripty (`getMeteoData.py`, `interpolacia.py`) používajú `matplotlib.use('TkAgg')` a pri priamom spustení sa pokúsia otvoriť okno s grafom. Na niektorých systémoch to môže vyžadovať doinštalovanie knižníc pre GUI (napr. `python3-tk` na Linuxe).
+> V repozitári sa nachádzajú aj ďalšie skripty (`getMeteoData.py`, `interpolacia.py`, `createGeojson.py`). Tieto slúžili na **jednorazovú prípravu statických dát** (CSV a GeoJSON súbory) a nie je nutné ich spúšťať pre bežnú prevádzku aplikácie. Pre viac detailov si pozrite [Technickú dokumentáciu](DOCS.md).
