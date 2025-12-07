@@ -182,3 +182,4 @@ __marimo__/
 e7b26b530a0ec6c28408f96c265692f5
 *.png
 .cache.sqlite
+static/pollenAverageLoadsOld.csv

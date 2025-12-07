@@ -484,8 +484,9 @@
             }
             const resultsSection = document.getElementById('results austria-graph');
             if (resultsSection) {
-                const url = `${data.image_url}?t=${new Date().getTime()}`;
-                resultsSection.innerHTML = `<p>Test</p>`;
+                const pollenGraphs = JSON.parse(data.pollen_data);
+                renderPollenPlots(pollenGraphs);
+
             }
         }catch(error){
             console.error('Error loading current pollen data:', error);
