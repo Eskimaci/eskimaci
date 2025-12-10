@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Skript pre dlhodobú analýzu vegetačného indexu (NDVI) z dát Sentinel-2.
+Script for long-term analysis of the vegetation index (NDVI) from Sentinel-2 data.
 
-Tento skript vykonáva nasledujúce kroky:
-1. Pripojí sa k Sentinel Hub API.
-2. Pre definovanú oblasť (Trnava) a časové obdobie (posledné 3 roky, mesiac august) 
-   stiahne dáta NDVI.
-3. Vypočíta trend vývoja vegetácie pre každý pixel pomocou lineárnej regresie.
-4. Vytvorí a uloží sumárnu mapu, ktorá farebne vizualizuje tento trend 
-   (zlepšenie, zhoršenie, stabilný stav).
+This script performs the following steps:
+1. Connects to the Sentinel Hub API.
+2. For a defined area (Trnava) and time period (e.g., last 3 years, August), 
+   it downloads NDVI data.
+3. Calculates the vegetation development trend for each pixel using linear regression.
+4. Creates and saves a summary map that colorfully visualizes this trend 
+   (improvement, deterioration, stable).
 """
 
 import os
-
 import matplotlib
 import numpy as np
 from decouple import config
@@ -30,27 +29,27 @@ from sentinelhub import (
     MosaickingOrder
 )
 
-# --- 1. ZÁKLADNÁ KONFIGURÁCIA ---
+# --- 1. BASIC CONFIGURATION ---
 
-# Načítanie prihlasovacích údajov z .env súboru
+# Loading credentials from .env file
 try:
     CLIENT_ID = config('CLIENT_ID')
     CLIENT_SECRET = config('CLIENT_SECRET')
 except Exception as e:
     print(
-        f"Chyba: Nepodarilo sa načítať CLIENT_ID alebo CLIENT_SECRET z .env súboru. Uistite sa, že súbor existuje a premenné sú nastavené. Detaily: {e}")
+        f"Error: Could not load CLIENT_ID or CLIENT_SECRET from .env file. Ensure the file exists and the variables are set. Details: {e}")
     # Do not exit, allow for a server to handle this error
     # exit() 
 
-# Konfigurácia Sentinel Hub API
+# Sentinel Hub API Configuration
 sh_config = SHConfig()
 if CLIENT_ID and CLIENT_SECRET:
     sh_config.sh_client_id = CLIENT_ID
     sh_config.sh_client_secret = CLIENT_SECRET
 else:
-    print("Varovanie: CLIENT_ID alebo CLIENT_SECRET nie sú nakonfigurované. Požiadavky na Sentinel Hub zlyhajú.")
+    print("Warning: CLIENT_ID or CLIENT_SECRET are not configured. Requests to Sentinel Hub will fail.")
 
-# Definovanie oblasti záujmu (AOI) - Trnava
+# Defining the Area of Interest (AOI) - Trnava
 POLYGON_COORDINATES = [
     [[17.5724, 48.3860], [17.5471, 48.3819], [17.5475, 48.3700], [17.5702, 48.3484],
      [17.6294, 48.3375], [17.6504, 48.3605], [17.6093, 48.3768], [17.6143, 48.3912],
@@ -58,11 +57,11 @@ POLYGON_COORDINATES = [
 ]
 AOI_GEOMETRY = Geometry(geometry={"type": "Polygon", "coordinates": POLYGON_COORDINATES}, crs=CRS.WGS84)
 
-# Výstupné parametre
-OUTPUT_SIZE = [500, 500]  # Znížená veľkosť pre rýchlejšie testovanie
+# Output parameters
+OUTPUT_SIZE = [500, 500]  # Reduced size for faster testing
 OUTPUT_FORMAT = MimeType.TIFF
 
-# Evalscript pre výpočet NDVI
+# Evalscript for NDVI calculation
 EVALSCRIPT_NDVI = """
 //VERSION=3
 function setup() {
@@ -79,11 +78,11 @@ function evaluatePixel(sample) {
 """
 
 
-# --- 2. FUNKCIE PRE ANALÝZU ---
+# --- 2. ANALYSIS FUNCTIONS ---
 
 def get_ndvi_for_year(year, target_month_start, target_month_end, config, geometry, size):
-    """Stiahne NDVI dáta pre zadaný rok a mesiac."""
-    print(f"Sťahujem dáta pre rok {year} (obdobie {target_month_start} až {target_month_end})...")
+    """Downloads NDVI data for the specified year and month range."""
+    print(f"Downloading data for year {year} (period {target_month_start} to {target_month_end})...")
     time_interval = (f'{year}-{target_month_start}', f'{year}-{target_month_end}')
     request = SentinelHubRequest(
         evalscript=EVALSCRIPT_NDVI,
@@ -102,106 +101,106 @@ def get_ndvi_for_year(year, target_month_start, target_month_end, config, geomet
     try:
         data = request.get_data(save_data=False)
         if not data:
-            print(f"Varovanie: Pre rok {year} neboli vrátené žiadne dáta.")
+            print(f"Warning: No data returned for year {year}.")
             return None
         ndvi_array = data[0]
-        # Nahradíme nuly (zvyčajne no-data) za NaN, aby neovplyvnili výpočty
+        # Replace zeros (usually no-data) with NaN to not affect calculations
         ndvi_array[ndvi_array == 0] = np.nan
         print(
-            f"DEBUG [{year}]: Tvar dát: {ndvi_array.shape}, Min: {np.nanmin(ndvi_array):.4f}, Max: {np.nanmax(ndvi_array):.4f}, Priemer: {np.nanmean(ndvi_array):.4f}")
+            f"DEBUG [{year}]: Data shape: {ndvi_array.shape}, Min: {np.nanmin(ndvi_array):.4f}, Max: {np.nanmax(ndvi_array):.4f}, Mean: {np.nanmean(ndvi_array):.4f}")
         return ndvi_array
     except Exception as e:
-        print(f"Chyba pri sťahovaní dát za rok {year}: {e}")
+        print(f"Error downloading data for year {year}: {e}")
         return None
 
 
 def generate_trend_map(years_to_analyze, target_month_start, target_month_end):
     """
-    Hlavná funkcia, ktorá orchesteruje celý proces analýzy a vracia cestu k vygenerovanému obrázku.
+    Main function that orchestrates the entire analysis process and returns the path to the generated image.
     """
     print(
-        f"--- Spúšťam dlhodobú analýzu NDVI trendu pre roky {years_to_analyze} a obdobie {target_month_start}-{target_month_end} ---")
+        f"--- Starting long-term NDVI trend analysis for years {years_to_analyze} and period {target_month_start}-{target_month_end} ---")
 
     if not sh_config.sh_client_id:
-        raise Exception("Chyba konfigurácie: Sentinel Hub Client ID nie je nastavené.")
+        raise Exception("Configuration error: Sentinel Hub Client ID is not set.")
 
     yearly_ndvi_data = [
         get_ndvi_for_year(year, target_month_start, target_month_end, sh_config, AOI_GEOMETRY, OUTPUT_SIZE) for year in
         years_to_analyze]
 
-    # Odfiltrujeme roky, pre ktoré sa nepodarilo stiahnuť dáta
+    # Filter out years for which data download failed
     valid_years_data = [(year, data) for year, data in zip(years_to_analyze, yearly_ndvi_data) if
                         data is not None and not np.isnan(data).all()]
 
     if len(valid_years_data) < 2:
-        print("Chyba: Pre analýzu trendu sú potrebné dáta aspoň z dvoch platných rokov. Končím.")
+        print("Error: Trend analysis requires data from at least two valid years. Exiting.")
         return None
 
-    # Rozbalíme validné dáta
+    # Unpack valid data
     valid_years, yearly_ndvi_data = zip(*valid_years_data)
 
-    # Spojenie dát do jedného 3D numpy poľa (roky, výška, šírka)
+    # Stack data into a single 3D numpy array (years, height, width)
     y = np.stack(yearly_ndvi_data, axis=0)
-    print(f"DEBUG: Tvar spojeného poľa (y): {y.shape}")
+    print(f"DEBUG: Shape of stacked array (y): {y.shape}")
 
-    print("Vypočítavam trend pre každý pixel...")
+    print("Calculating trend for each pixel...")
     n_years = y.shape[0]
     x = np.arange(n_years)
     x_reshaped = x.reshape(n_years, 1, 1)
 
-    # Použijeme nanmean, aby sme ignorovali pixely bez dát
+    # Use nanmean to ignore pixels without data
     mean_x = np.mean(x)
     mean_y = np.nanmean(y, axis=0)
 
-    # Vypočítame čitateľa a menovateľa, pričom ignorujeme NaN hodnoty
+    # Calculate numerator and denominator, ignoring NaN values
     numerator = np.nansum((x_reshaped - mean_x) * (y - mean_y), axis=0)
     denominator = np.sum((x - mean_x) ** 2)
 
     trend_map = np.divide(numerator, denominator, out=np.zeros_like(numerator), where=denominator != 0)
 
-    # Maskovanie oblastí, kde neboli žiadne platné dáta
+    # Masking areas with no valid data
     trend_map[np.isnan(mean_y)] = np.nan
 
-    print("Výpočet trendu dokončený.")
+    print("Trend calculation finished.")
     print(
-        f"DEBUG: Štatistiky mapy trendov - Min: {np.nanmin(trend_map):.4f}, Max: {np.nanmax(trend_map):.4f}, Priemer: {np.nanmean(trend_map):.4f}")
+        f"DEBUG: Trend map statistics - Min: {np.nanmin(trend_map):.4f}, Max: {np.nanmax(trend_map):.4f}, Mean: {np.nanmean(trend_map):.4f}")
 
-    print("Vytváram a ukladám mapu trendu...")
+    print("Creating and saving trend map...")
     with plt.style.context('default'):
         cmap_trend = LinearSegmentedColormap.from_list("trend_map", [(0, "red"), (0.5, "white"), (1, "green")])
         plt.figure(figsize=(12, 10))
 
-        # Ignorujeme NaN pri výpočte percentilu
+        # Ignore NaN when calculating percentile
         vlim = np.nanpercentile(np.abs(trend_map), 98)
         if vlim == 0: vlim = 1.0
 
         img = plt.imshow(trend_map, cmap=cmap_trend, vmin=-vlim, vmax=vlim)
-        plt.colorbar(img, label="Sklon trendu NDVI (zmena za rok)")
-        plt.title(f"Trend vývoja vegetácie v Trnave ({valid_years[0]}-{valid_years[-1]})")
+        plt.colorbar(img, label="NDVI Trend Slope (change per year)")
+        plt.title(f"Vegetation Development Trend in Trnava ({valid_years[0]}-{valid_years[-1]})")
         plt.xlabel("Pixel X")
         plt.ylabel("Pixel Y")
 
-        # Uloženie do statickej zložky
+        # Saving to static folder
         output_dir = "static/output"
         os.makedirs(output_dir, exist_ok=True)
 
-        filename = f"ndvi_trend_trnava_{valid_years[0]}_{valid_years[-1]}_{target_month_start}_{target_month_end}.png"
+        filename = f"trend_map_{valid_years[0]}-{valid_years[-1]}_{target_month_start.replace('-','')}_{target_month_end.replace('-','')}.png"
         output_filepath = os.path.join(output_dir, filename)
+        
+        plt.savefig(output_filepath, dpi=150)  # Reduced DPI for faster generation
+        plt.close()  # Freeing memory
 
-        plt.savefig(output_filepath, dpi=150)  # Znížené DPI pre rýchlejšie generovanie
-        plt.close()  # Uvoľnenie pamäte
-
-    print(f"✅ Mapa trendu úspešne uložená ako: {output_filepath}")
+    print(f"✅ Trend map successfully saved as: {output_filepath}")
     return output_filepath
 
 
-# --- 3. HLAVNÝ PROCES SPRACOVANIA (pre priame spustenie) ---
+# --- 3. MAIN PROCESSING (for direct execution) ---
 
 if __name__ == "__main__":
-    """Príklad spustenia pre testovacie účely."""
-    print("--- Spúšťam testovaciu analýzu pre priame spustenie skriptu ---")
+    """Example run for testing purposes."""
+    print("--- Running test analysis for direct script execution ---")
 
-    # Parametre pre test
+    # Parameters for test
     test_years = [2022, 2023, 2024]
     test_month_start = "06-01"
     test_month_end = "08-31"
@@ -209,8 +208,8 @@ if __name__ == "__main__":
     try:
         image_path = generate_trend_map(test_years, test_month_start, test_month_end)
         if image_path:
-            print(f"\nTest úspešný. Výsledný obrázok je v: {image_path}")
+            print(f"\nTest successful. Resulting image is at: {image_path}")
         else:
-            print("\nTest neúspešný. Nevytvoril sa žiadny obrázok.")
+            print("\nTest failed. No image was created.")
     except Exception as e:
-        print(f"Počas testu nastala chyba: {e}")
+        print(f"An error occurred during the test: {e}")

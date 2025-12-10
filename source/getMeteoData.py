@@ -88,7 +88,7 @@ for i in range(len(years)):
         init_zorder = 1
 
     line, = ax.plot(data[i]['date'], data[i]['temperature_2m_mean'],
-                    label=f'Rok {years[i]}',
+                    label=f'Year {years[i]}',
                     linewidth=init_lw, alpha=init_alpha,
                     zorder=init_zorder, picker=5)
     # lines.append(line)
@@ -171,11 +171,11 @@ min_length = min(len(data[i]) for i in range(len(years)))
 
 combined_df = pd.DataFrame()
 
-# ZMENA JE TU: Pridali sme .dt.date
-# Toto oreže časovú zložku a nechá len dátum (YYYY-MM-DD)
+# CHANGE IS HERE: We added .dt.date
+# This truncates the time component, leaving only the date (YYYY-MM-DD)
 combined_df['date'] = data[0]['date'].iloc[:min_length].dt.date.reset_index(drop=True)
 
 for i, year in enumerate(years):
-    combined_df[f'Rok {year}'] = data[i]['temperature_2m_mean'].iloc[:min_length].reset_index(drop=True)
+    combined_df[f'Year {year}'] = data[i]['temperature_2m_mean'].iloc[:min_length].reset_index(drop=True)
 
 combined_df.to_csv('../static/temperature_comparison.csv', index=False)
